@@ -44,7 +44,7 @@ class LeaderboardModel {
 
   factory LeaderboardModel.fromJson(Map<String, dynamic> json) {
     return LeaderboardModel(
-      uid: json['uid'] ?? '',
+      uid: json['uid'] ?? json['friendUid'] ?? '',
       username: json['username'] ?? '',
       avatarUrl: json['avatarUrl'],
       level: json['level'] ?? 1,

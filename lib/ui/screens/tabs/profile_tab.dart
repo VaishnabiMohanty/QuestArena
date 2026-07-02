@@ -3,17 +3,21 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/colors.dart';
-import '../../../core/constants/text_styles.dart';
-import '../../../core/utils/rank_system.dart';
-import '../../../providers/user_providers.dart';
-import '../../../providers/auth_providers.dart';
-import '../../../providers/leaderboard_providers.dart';
-import '../../widgets/rank_progress_bar.dart';
-import '../../widgets/xp_progress_bar.dart';
-import '../../widgets/neon_swirl_background.dart';
-import '../../widgets/smart_avatar.dart';
-import '../character_select_screen.dart';
+import 'package:intl/intl.dart';
+import 'package:questarena/core/constants/colors.dart';
+import 'package:questarena/core/constants/text_styles.dart';
+import 'package:questarena/core/utils/rank_system.dart';
+import 'package:questarena/data/models/leaderboard_model.dart';
+import 'package:questarena/providers/user_providers.dart';
+import 'package:questarena/providers/auth_providers.dart';
+import 'package:questarena/providers/leaderboard_providers.dart';
+import 'package:questarena/ui/widgets/rank_progress_bar.dart';
+import 'package:questarena/ui/widgets/xp_progress_bar.dart';
+import 'package:questarena/ui/widgets/neon_swirl_background.dart';
+import 'package:questarena/ui/widgets/smart_avatar.dart';
+import 'package:questarena/ui/screens/character_select_screen.dart';
+
+import 'leaderboard_tab.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -261,22 +265,22 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.gold.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: AppColors.gold.withValues(alpha: 0.4), width: 1.5),
+                            color: AppColors.gold.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 16),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 14),
+                              const SizedBox(width: 6),
                               Text(
-                                'MVP HOLDER',
+                                '🏆 MVP HOLDER',
                                 style: AppTextStyles.label.copyWith(
                                   color: AppColors.gold,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
@@ -284,11 +288,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                         ),
                       ],
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
 
-                      // Main Stats Row
+                      // Main Stats Row (4 statistics)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _ProfileStat(label: 'XP', value: '${user.xp}', color: AppColors.purple, icon: Icons.stars_rounded),
                           _ProfileStat(label: 'WINS', value: '${user.wins}', color: AppColors.teal, icon: Icons.emoji_events_rounded),
@@ -319,6 +323,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                       ),
                       
                       const SizedBox(height: 32),
+
+                      // Friend Requests Section
+                      const _FriendRequestsSection(),
+
+                      // Friends List Section
+                      const _FriendsListSection(),
 
                       // Statistics Card
                       Container(
@@ -354,7 +364,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 48),
 
                       // Achievements Section
                       Row(
@@ -477,6 +487,189 @@ class _AchievementChip extends StatelessWidget {
           Text(name.toUpperCase(), style: AppTextStyles.label.copyWith(color: AppColors.gold, fontSize: 9, fontWeight: FontWeight.bold)),
         ],
       ),
+    );
+  }
+}
+
+class _FriendRequestsSection extends ConsumerWidget {
+  const _FriendRequestsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final requestsAsync = ref.watch(incomingRequestsProvider);
+
+    return requestsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+      data: (requests) {
+        if (requests.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('FRIEND REQUESTS', style: AppTextStyles.label.copyWith(letterSpacing: 2)),
+            const SizedBox(height: 16),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: requests.length,
+              itemBuilder: (context, index) {
+                final request = requests[index];
+                final data = request.data();
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.surface),
+                  ),
+                  child: Row(
+                    children: [
+                      SmartAvatar(avatarUrl: data['senderAvatar'], size: 40),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(data['senderUsername'], style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
+                            Text('Sent you a request', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => ref.read(friendsRepositoryProvider).acceptFriendRequest(request.id, data),
+                            icon: const Icon(Icons.check_circle_rounded, color: AppColors.teal),
+                          ),
+                          IconButton(
+                            onPressed: () => ref.read(friendsRepositoryProvider).rejectFriendRequest(request.id),
+                            icon: const Icon(Icons.cancel_rounded, color: AppColors.red),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FriendsListSection extends ConsumerWidget {
+  const _FriendsListSection();
+
+  void _showFriendProfile(BuildContext context, LeaderboardModel friend) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    SmartAvatar(avatarUrl: friend.avatarUrl, size: 60),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(friend.username, style: AppTextStyles.headline.copyWith(fontSize: 20)),
+                          Text(
+                            'LVL ${friend.level} • ${RankSystem.getRankName(friend.rank, friend.subRank)}',
+                            style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                ExpandedDetails(uid: friend.uid, player: friend, isMe: false),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('CLOSE', style: AppTextStyles.label.copyWith(color: AppColors.textSecondary)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final friendsAsync = ref.watch(friendsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('FRIENDS', style: AppTextStyles.label.copyWith(letterSpacing: 2)),
+        const SizedBox(height: 16),
+        friendsAsync.when(
+          loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+          error: (e, s) => Text('Error: $e'),
+          data: (friends) {
+            if (friends.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text('You haven\'t added any friends yet.', style: AppTextStyles.bodyMd.copyWith(color: AppColors.textMuted)),
+              );
+            }
+
+            return SizedBox(
+              height: 120,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: friends.length,
+                itemBuilder: (context, index) {
+                  final friend = friends[index];
+                  return GestureDetector(
+                    onTap: () => _showFriendProfile(context, friend),
+                    child: Container(
+                      width: 100,
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.surface),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SmartAvatar(avatarUrl: friend.avatarUrl, size: 40),
+                          const SizedBox(height: 8),
+                          Text(
+                            friend.username,
+                            style: AppTextStyles.bodyMd.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text('LVL ${friend.level}', style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.gold)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

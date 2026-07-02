@@ -100,12 +100,21 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
                           children: [
                             Row(
                               children: [
-                                SmartAvatar(
-                                  avatarUrl: user.avatarUrl,
-                                  size: 70,
-                                  showGlow: true,
+                                Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    SmartAvatar(
+                                      avatarUrl: user.avatarUrl,
+                                      size: 70,
+                                      showGlow: true,
+                                    ),
+                                    Transform.translate(
+                                      offset: const Offset(8, 8),
+                                      child: RankBadge(rank: user.rank, subRank: user.subRank, size: 32),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: 24),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +132,6 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
                                     ],
                                   ),
                                 ),
-                                RankBadge(rank: user.rank, subRank: user.subRank, size: 40),
                               ],
                             ),
                             if (user.rank != 'Legend' && user.rank != 'Unranked') ...[
