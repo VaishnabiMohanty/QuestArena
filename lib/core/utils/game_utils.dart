@@ -2,6 +2,7 @@
 // Utility functions for game logic.
 
 import 'dart:math';
+import 'dart:convert';
 import '../../data/models/match_history_model.dart';
 
 class GameUtils {
@@ -19,6 +20,13 @@ class GameUtils {
         .replaceAll('&rdquo;', '"')
         .replaceAll('&hellip;', '...')
         .replaceAll('&deg;', '°');
+  }
+
+  // Generates a unique ID for a question based on its text
+  static String generateQuestionId(String question) {
+    final clean = question.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+    final bytes = utf8.encode(clean);
+    return base64Encode(bytes).replaceAll('=', '').substring(0, min(28, base64Encode(bytes).length));
   }
 
   // Generates a random 6-character uppercase alphanumeric code

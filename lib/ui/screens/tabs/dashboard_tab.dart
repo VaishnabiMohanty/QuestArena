@@ -4,17 +4,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../providers/user_providers.dart';
-import '../../../providers/matchmaking_providers.dart';
-import '../../../data/models/matchmaking_model.dart';
 import '../store_screen.dart';
-import '../matchmaking_screen.dart';
-import '../../widgets/category_picker_sheet.dart';
 import '../../../core/utils/rank_system.dart';
 import '../../widgets/rank_badge.dart';
 import '../../widgets/rank_progress_bar.dart';
 import '../../widgets/xp_progress_bar.dart';
 import '../../widgets/smart_avatar.dart';
 import '../../widgets/neon_swirl_background.dart';
+import '../../widgets/daily_quest_box.dart';
+import '../../../providers/daily_quest_provider.dart';
 
 class DashboardTab extends ConsumerStatefulWidget {
   const DashboardTab({super.key});
@@ -160,6 +158,8 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
                         ),
                       ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
 
+                      const _DailyQuestsSection(),
+
                       const SizedBox(height: 32),
 
                       Text('QUICK STATS', style: AppTextStyles.label),
@@ -189,8 +189,6 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
                           ),
                         ],
                       ).animate().fadeIn(delay: 400.ms),
-
-                      const _RecentHistorySection(),
                     ],
                   ),
                 ),
@@ -200,6 +198,58 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
         );
       },
     );
+  }
+}
+
+class _DailyQuestsSection extends ConsumerWidget {
+  const _DailyQuestsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dailyQuestsAsync = ref.watch(dailyQuestsProvider);
+    final isSunday = DateTime.now().weekday == DateTime.sunday;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 32),
+        Text(
+          isSunday ? 'WEEKLY REWARDS' : 'DAILY QUESTS',
+          style: AppTextStyles.label.copyWith(
+            letterSpacing: 2,
+            color: isSunday ? AppColors.gold : AppColors.textSecondary,
+            fontWeight: isSunday ? FontWeight.w900 : FontWeight.normal,
+          ),
+        ),
+        const SizedBox(height: 12),
+        dailyQuestsAsync.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: CircularProgressIndicator(color: AppColors.purple),
+            ),
+          ),
+          error: (e, s) => Center(
+            child: Text('Error loading quests', style: AppTextStyles.label.copyWith(color: AppColors.red)),
+          ),
+          data: (quests) {
+            if (quests.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Text('No quests available today.', style: TextStyle(color: AppColors.textMuted)),
+                ),
+              );
+            }
+            return Column(
+              children: quests.asMap().entries.map((entry) {
+                return DailyQuestBox(quest: entry.value, index: entry.key);
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    ).animate().fadeIn(delay: 300.ms);
   }
 }
 
@@ -230,86 +280,6 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RecentHistorySection extends ConsumerWidget {
-  const _RecentHistorySection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final historyAsync = ref.watch(matchHistoryProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('RECENT MATCHES', style: AppTextStyles.label),
-            TextButton(onPressed: () {}, child: const Text('View All', style: TextStyle(fontSize: 10))),
-          ],
-        ),
-        const SizedBox(height: 12),
-        historyAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, s) => Text('Error: $e'),
-          data: (history) {
-            if (history.isEmpty) {
-              return const Center(child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Text('No matches played yet.', style: TextStyle(color: AppColors.textMuted)),
-              ));
-            }
-
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: history.length > 5 ? 5 : history.length,
-              itemBuilder: (context, index) {
-                final match = history[index];
-                final isWin = match.playerScore > match.opponentScore;
-                final isDraw = match.playerScore == match.opponentScore;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.surface),
-                  ),
-                  child: Row(
-                    children: [
-                      SmartAvatar(
-                        avatarUrl: match.opponentAvatarUrl,
-                        size: 44,
-                        showBorder: true,
-                        showGlow: false,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(match.opponentName, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
-                            Text(isWin ? 'Victory' : (isDraw ? 'Draw' : 'Defeat'), style: AppTextStyles.label.copyWith(fontSize: 10, color: isWin ? AppColors.teal : (isDraw ? AppColors.gold : AppColors.red))),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '${match.playerScore} - ${match.opponentScore}',
-                        style: AppTextStyles.headline.copyWith(fontSize: 16),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ],
     );
   }
 }

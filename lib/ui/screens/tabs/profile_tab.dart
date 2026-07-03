@@ -8,6 +8,7 @@ import '../../../providers/auth_providers.dart';
 import '../../../providers/leaderboard_providers.dart';
 import '../../../data/models/leaderboard_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/match_history_model.dart';
 import '../../widgets/xp_progress_bar.dart';
 import '../../widgets/rank_progress_bar.dart';
 import '../../widgets/neon_swirl_background.dart';
@@ -106,6 +107,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                       const _FriendsListSection(),
                       const SizedBox(height: 32),
                       _DetailedStatsCard(user: user),
+                      const SizedBox(height: 32),
+                      const _RecentHistorySection(),
                       const SizedBox(height: 48),
                       _AchievementsSection(user: user),
                       const SizedBox(height: 48),
@@ -605,6 +608,86 @@ class _FriendsListSection extends ConsumerWidget {
                   );
                 },
               ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RecentHistorySection extends ConsumerWidget {
+  const _RecentHistorySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final historyAsync = ref.watch(matchHistoryProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('RECENT MATCHES', style: AppTextStyles.label.copyWith(letterSpacing: 2)),
+            TextButton(onPressed: () {}, child: const Text('View All', style: TextStyle(fontSize: 10))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        historyAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Text('Error: $e'),
+          data: (history) {
+            if (history.isEmpty) {
+              return const Center(child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text('No matches played yet.', style: TextStyle(color: AppColors.textMuted)),
+              ));
+            }
+
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: history.length > 5 ? 5 : history.length,
+              itemBuilder: (context, index) {
+                final match = history[index];
+                final isWin = match.playerScore > match.opponentScore;
+                final isDraw = match.playerScore == match.opponentScore;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.surface),
+                  ),
+                  child: Row(
+                    children: [
+                      SmartAvatar(
+                        avatarUrl: match.opponentAvatarUrl,
+                        size: 44,
+                        showBorder: true,
+                        showGlow: false,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(match.opponentName, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
+                            Text(isWin ? 'Victory' : (isDraw ? 'Draw' : 'Defeat'), style: AppTextStyles.label.copyWith(fontSize: 10, color: isWin ? AppColors.teal : (isDraw ? AppColors.gold : AppColors.red))),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${match.playerScore} - ${match.opponentScore}',
+                        style: AppTextStyles.headline.copyWith(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
           },
         ),
