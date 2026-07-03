@@ -79,19 +79,9 @@ class UserRepository {
     await FirebaseFirestore.instance.collection('users').doc(uid).delete();
   }
 
-  Future<void> deleteMatchHistory(String uid, String matchId) async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('matchHistory')
-        .doc(matchId)
-        .delete();
-  }
-
   Future<MatchEndResult?> processMatchEnd({
     required String uid,
     required bool isWin,
-    required bool isDraw,
     bool isDraw = false,
     required int correctAnswers,
     required int totalQuestions,
@@ -119,46 +109,9 @@ class UserRepository {
         totalQuestions: totalQuestions,
       );
 
-      // 2. Handle ELO and Rank (Only for Ranked Matches)
+      // 2. Handle ELO and Rank
       int newElo = user.eloRating;
-      String newRank = user.rank;
-      int? newSubRank = user.subRank;
-      int newRankPoints = user.rankPoints;
-      bool promoted = false;
-      bool demoted = false;
-      int pointsGained = 0;
-
-      if (isRanked) {
-        if (!isDraw) {
-          final eloChange = isWin ? 20 : -20;
-          newElo = (user.eloRating + eloChange).clamp(0, 5000);
-          newRank = RankSystem.getRankFromElo(newElo);
-          promoted = RankSystem.ranks.indexOf(newRank) > RankSystem.ranks.indexOf(user.rank);
-          demoted = RankSystem.ranks.indexOf(newRank) < RankSystem.ranks.indexOf(user.rank);
-          
-          // Clear subrank if we move to the new system, or keep it for legacy UI?
-          // User said "Preserve existing UI", but the new system doesn't mention subranks.
-          // I'll keep subrank null for the new ELO system to indicate it's simplified.
-          newSubRank = null; 
-        }
-      } else {
-        // Legacy/Existing Rank System for non-ranked modes (like Private Duel if it was allowed)
-        // But user said: "Private Duel and Practice Mode: Do not use ELO. Do not update ELO after these matches."
-        // And "Ranked Match only: Winner gains +20 ELO..."
-        
-        final wrongAnswers = totalQuestions - correctAnswers;
-        final rankUpdate = RankService.calculateRankUpdate(
-          user: user,
-          correctAnswers: correctAnswers,
-          wrongAnswers: wrongAnswers,
-        );
-        newRank = rankUpdate.newRank;
-        newSubRank = rankUpdate.newSubRank;
-        newRankPoints = rankUpdate.newPoints;
-        promoted = rankUpdate.promoted;
-        demoted = rankUpdate.demoted;
-        pointsGained = rankUpdate.pointsGained;
-      }
+      
       final wrongAnswers = totalQuestions - correctAnswers;
       var rankUpdate = RankService.calculateRankUpdate(
         user: user,
@@ -166,17 +119,44 @@ class UserRepository {
         wrongAnswers: wrongAnswers,
       );
 
+      if (isRanked) {
+        if (!isDraw) {
+          final eloChange = isWin ? 20 : -20;
+          newElo = (user.eloRating + eloChange).clamp(0, 5000);
+          final newRankName = RankSystem.getRankFromElo(newElo);
+          
+          rankUpdate = RankUpdateResult(
+            oldRank: user.rank,
+            oldSubRank: user.subRank,
+            oldPoints: user.rankPoints,
+            newRank: newRankName,
+            newSubRank: null,
+            newPoints: user.rankPoints,
+            pointsGained: eloChange,
+            promoted: RankSystem.ranks.indexOf(newRankName) > RankSystem.ranks.indexOf(user.rank),
+            demoted: RankSystem.ranks.indexOf(newRankName) < RankSystem.ranks.indexOf(user.rank),
+          );
+        } else {
+          rankUpdate = RankUpdateResult(
+            oldRank: user.rank,
+            oldSubRank: user.subRank,
+            oldPoints: user.rankPoints,
+            newRank: user.rank,
+            newSubRank: user.subRank,
+            newPoints: user.rankPoints,
+            pointsGained: 0,
+          );
+        }
+      }
+
       bool rankProtectionUsed = false;
       int remainingRankProtection = user.rankProtectionMatches;
 
-      // If protection is active, we consume a match regardless of the outcome
-      // but only apply the "protection" effect if they would have lost points.
       if (rankProtectionActive && remainingRankProtection > 0) {
         remainingRankProtection--;
         
         if (rankUpdate.pointsGained < 0 || rankUpdate.demoted) {
           rankProtectionUsed = true;
-          // Reset rank update to original state (prevent loss)
           rankUpdate = RankUpdateResult(
             oldRank: user.rank,
             oldSubRank: user.subRank,
@@ -193,38 +173,11 @@ class UserRepository {
 
       final totalXp = user.xp + xpRewards.total;
       final newLevel = LevelSystem.getCurrentLevel(totalXp);
-
-      // Daily Return Streak logic
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      int currentStreak = user.currentWinStreak;
-
-      if (user.lastDailyBonusDate != null) {
-        final lastPlayed = DateTime(
-          user.lastDailyBonusDate!.year,
-          user.lastDailyBonusDate!.month,
-          user.lastDailyBonusDate!.day,
-        );
-        final diff = today.difference(lastPlayed).inDays;
-
-        if (diff == 1) {
-          // Returned on consecutive day
-          currentStreak++;
-        } else if (diff > 1) {
-          // Missed at least one day
-          currentStreak = 1;
-        }
-        // if diff == 0, already played today, streak remains same
-      } else {
-        // First match ever
-        currentStreak = 1;
-      }
-
-      final highestWinStreak = currentStreak > user.highestWinStreak 
-          ? currentStreak 
+      
+      final currentWinStreak = isWin ? user.currentWinStreak + 1 : 0;
+      final highestWinStreak = currentWinStreak > user.highestWinStreak 
+          ? currentWinStreak 
           : user.highestWinStreak;
-
-      final lastDailyBonusDate = now; // Update last played date
 
       // Achievements Logic
       final achievements = List<String>.from(userData['achievements'] ?? []);
@@ -238,24 +191,11 @@ class UserRepository {
 
       int abWins = user.arenaBreakerWins;
       int abLosses = user.arenaBreakerLosses;
-
       if (isArenaBreakerWin) {
         if (isWin) {
           abWins++;
-          if (!achievements.contains('arena_breaker')) {
-            achievements.add('arena_breaker');
-          }
+          if (!achievements.contains('arena_breaker')) achievements.add('arena_breaker');
         } else if (!isDraw) {
-          abLosses++;
-        }
-      }
-
-      if (abWins >= 5 && !achievements.contains('clutch_master')) {
-        achievements.add('clutch_master');
-      }
-      if (abWins >= 10 && !achievements.contains('unbreakable')) {
-        achievements.add('unbreakable');
-        } else {
           abLosses++;
         }
       }
@@ -267,20 +207,13 @@ class UserRepository {
         'wins': totalWins,
         'losses': user.losses + (!isWin && !isDraw ? 1 : 0),
         'draws': user.draws + (isDraw ? 1 : 0),
-        'currentWinStreak': currentStreak,
-        'highestWinStreak': highestWinStreak,
-        'lastDailyBonusDate': Timestamp.fromDate(lastDailyBonusDate),
-        'rank': rankUpdate.newRank,
-        'subRank': rankUpdate.newSubRank,
-        'rankPoints': rankUpdate.newPoints,
         'matchesPlayed': user.matchesPlayed + 1,
         'eloRating': newElo,
         'currentWinStreak': currentWinStreak,
         'highestWinStreak': highestWinStreak,
-        'lastDailyBonusDate': lastDailyBonusDate != null ? Timestamp.fromDate(lastDailyBonusDate) : null,
-        'rank': newRank,
-        'subRank': newSubRank,
-        'rankPoints': newRankPoints,
+        'rank': rankUpdate.newRank,
+        'subRank': rankUpdate.newSubRank,
+        'rankPoints': rankUpdate.newPoints,
         'achievements': achievements,
         'arenaBreakerWins': abWins,
         'arenaBreakerLosses': abLosses,
@@ -291,46 +224,12 @@ class UserRepository {
 
       result = MatchEndResult(
         xpRewards: xpRewards,
-        rankUpdate: RankUpdateResult(
-          oldRank: user.rank,
-          oldSubRank: user.subRank,
-          oldPoints: user.rankPoints,
-          newRank: newRank,
-          newSubRank: newSubRank,
-          newPoints: newRankPoints,
-          pointsGained: isRanked ? (isWin ? 20 : (isDraw ? 0 : -20)) : pointsGained,
-          promoted: promoted,
-          demoted: demoted,
-        ),
         rankUpdate: rankUpdate,
         rankProtectionUsed: rankProtectionUsed,
       );
     });
 
     return result;
-  }
-
-  // Backward compatibility
-  Future<void> updateUserStats({
-    required String uid,
-    required int xpGained,
-    required int coinsGained,
-    required bool isWin,
-    bool isDraw = false,
-    bool isArenaBreakerWin = false,
-    bool isArenaBreakerWin = false,
-    bool rankProtectionActive = false,
-  }) async {
-    await processMatchEnd(
-      uid: uid,
-      isWin: isWin,
-      isDraw: isDraw,
-      correctAnswers: 0,
-      totalQuestions: 0,
-      coinsGained: coinsGained,
-      isArenaBreakerWin: isArenaBreakerWin,
-      rankProtectionActive: rankProtectionActive,
-    );
   }
 
   Future<void> saveMatchHistory(String uid, MatchModel history) async {
@@ -349,9 +248,7 @@ class UserRepository {
         .collection('matchHistory')
         .orderBy('timestamp', descending: true);
     
-    if (limit != null) {
-      query = query.limit(limit);
-    }
+    if (limit != null) query = query.limit(limit);
 
     return query.snapshots().map((snapshot) {
       return snapshot.docs

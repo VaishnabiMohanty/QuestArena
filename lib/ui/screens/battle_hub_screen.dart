@@ -125,7 +125,9 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
   @override
   void dispose() {
     _titleAnim.dispose();
-    for (final c in _cardAnims) c.dispose();
+    for (final c in _cardAnims) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -256,8 +258,8 @@ class _RankProtectionToggle extends StatelessWidget {
           child: Switch.adaptive(
             value: isActive,
             onChanged: onChanged,
-            activeColor: AppColors.neonViolet,
-            activeTrackColor: AppColors.neonViolet.withOpacity(0.3),
+            activeTrackColor: AppColors.neonViolet,
+            inactiveTrackColor: AppColors.neonViolet.withValues(alpha: 0.1),
           ),
         ),
         Text(
@@ -410,7 +412,7 @@ class _BattleModeCardState extends State<_BattleModeCard>
                       const SizedBox(height: 2),
                       Text(
                         '(${widget.mode.subSubtitle})',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 11,
                           letterSpacing: 0.2,

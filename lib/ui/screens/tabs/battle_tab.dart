@@ -1,6 +1,3 @@
-// WHAT THIS FILE DOES:
-// The entry point for all game modes.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -15,7 +12,6 @@ import '../../widgets/neon_swirl_background.dart';
 import '../matchmaking_screen.dart';
 import '../private_room_screen.dart';
 import '../../../features/practice/screens/practice_setup_screen.dart';
-import '../../widgets/category_picker_sheet.dart';
 
 class BattleTab extends ConsumerStatefulWidget {
   const BattleTab({super.key});
@@ -101,7 +97,7 @@ class _BattleTabState extends ConsumerState<BattleTab> with TickerProviderStateM
     final hasShields = (user?.rankProtectionMatches ?? 0) > 0;
 
     return Scaffold(
-      backgroundColor: AppColors.bgBase,
+      backgroundColor: Colors.transparent,
       body: NeonSwirlBackground(
         colors: const [AppColors.neonViolet, AppColors.neonCyan],
         child: SafeArea(
@@ -110,9 +106,6 @@ class _BattleTabState extends ConsumerState<BattleTab> with TickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('BATTLE HUB', style: AppTextStyles.display),
-                Text('Select your challenge', style: AppTextStyles.label),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -264,8 +257,8 @@ class _RankProtectionToggle extends StatelessWidget {
           child: Switch.adaptive(
             value: isActive,
             onChanged: onChanged,
-            activeColor: AppColors.neonViolet,
-            activeTrackColor: AppColors.neonViolet.withOpacity(0.3),
+            activeTrackColor: AppColors.neonViolet,
+            inactiveTrackColor: AppColors.neonViolet.withValues(alpha: 0.1),
           ),
         ),
         Text(

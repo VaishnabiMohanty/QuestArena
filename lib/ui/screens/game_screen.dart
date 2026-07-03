@@ -35,7 +35,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
   int _lastQuestionIndex = -1;
   String? _lastABQuestionText;
   int _lastABRound = 0;
-  bool _hasUsedFiftyFifty = false;
   bool _isActivatingShield = false;
   bool _isRevealingTimeoutAnswer = false;
   int? _timeoutRevealQuestionIndex;
@@ -104,7 +103,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
       final remainingMs = 15000 - elapsedMs;
 
       if (remainingMs <= 0) {
-        // Timer EXPIRED - Driver logic
         if (!_hasAnswered && _timerController.isAnimating) {
           _timerController.stop();
           if (room.status == 'arena_breaker') {
@@ -113,12 +111,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
             _handleTimeout();
           }
         }
-        // After the reveal window, force server to move to next Q if it hasn't yet.
         if (room.status == 'active' && !_isRevealingTimeoutAnswer) {
           ref.read(gameRepositoryProvider).forceAdvanceQuestion(widget.roomId, room.currentQuestionIndex);
         }
       } else {
-        // Sync local timer animation
         final targetValue = remainingMs / 15000.0;
         if ((_timerController.value - targetValue).abs() > 0.05 || !_timerController.isAnimating) {
           if (!_hasAnswered) {
@@ -197,7 +193,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
     int score = 0;
     if (isCorrect) {
-      // Calculate score based on remaining time
       final remainingRatio = _timerController.value;
       score = 10 + (remainingRatio * 5).toInt();
     }
@@ -262,24 +257,21 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return;
       }
 
-      // Detect New Question (Regular)
       if (_lastQuestionIndex != room.currentQuestionIndex) {
         _lastQuestionIndex = room.currentQuestionIndex;
         _prepareOptions(room);
         setState(() {
           _hasAnswered = false;
           _selectedAnswer = null;
-          _fiftyFiftyHiddenOptions = [];
+          _hiddenOptions = [];
           _isRevealingTimeoutAnswer = false;
           _timeoutRevealQuestionIndex = null;
-          _hiddenOptions = [];
           _hasUsedOneOptionLifeline = false;
           _hasUsedTwoOptionLifeline = false;
         });
-        _syncState(); // Immediate sync for new Q
+        _syncState();
       }
 
-      // Arena Breaker Synchronization
       if (room.status == 'arena_breaker' && room.arenaBreakerQuestion != null) {
         if (_lastABRound != room.arenaBreakerRound) {
           final isFirstABQuestion = _lastABRound == 0;
@@ -288,12 +280,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
           setState(() {
             _hasAnswered = false;
             _selectedAnswer = null;
-            // If we reconnected mid-match, skip the 3s intro if round already started a while ago
             if (isFirstABQuestion && room.questionStartedAt != null) {
               final elapsed = DateTime.now().difference(room.questionStartedAt!).inSeconds;
               if (elapsed > 2) _showABIntro = false;
             } else if (!isFirstABQuestion) {
-              // Not the first round (both got it wrong previously), skip intro
               _showABIntro = false;
             }
           });
@@ -301,14 +291,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
         }
       }
 
-      // Presence Logic
       final String p1Uid = room.player1['uid'] ?? '';
       final String? p2Uid = room.player2?['uid'];
       final String? opponentId = user.uid == p1Uid ? p2Uid : p1Uid;
 
       if (opponentId != null && (room.status == 'active' || room.status == 'arena_breaker')) {
         final presence = room.presence[opponentId];
-        final lastSeen = presence?['lastSeen'] as DateTime?;
+        final lastSeen = (presence?['lastSeen'] is int) 
+            ? DateTime.fromMillisecondsSinceEpoch(presence?['lastSeen'])
+            : (presence?['lastSeen'] as DateTime?);
         final isOnline = presence?['isOnline'] ?? true;
 
         bool disconnected = !isOnline || (lastSeen != null && DateTime.now().difference(lastSeen).inSeconds > 15);
@@ -391,7 +382,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         .fadeIn(),
                     const SizedBox(height: 32),
                     ..._shuffledOptions
-                        .where((opt) => !_fiftyFiftyHiddenOptions.contains(opt))
+                        .where((opt) => !_hiddenOptions.contains(opt))
                         .map((opt) => Padding(
                               padding: const EdgeInsets.only(bottom: 16),
                               child: _AnswerButton(
@@ -403,35 +394,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
                               ),
                             )),
                     const SizedBox(height: 16),
+                    if (_isRevealingTimeoutAnswer &&
+                        _timeoutRevealQuestionIndex == room.currentQuestionIndex)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Time up! Correct answer revealed.',
+                          style: AppTextStyles.label.copyWith(color: AppColors.gold),
+                          textAlign: TextAlign.center,
+                        ).animate().fadeIn().shake(hz: 2),
+                      ),
                   ],
                 ),
               ),
             ),
-            if (_isRevealingTimeoutAnswer &&
-                _timeoutRevealQuestionIndex == room.currentQuestionIndex)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Time up! Correct answer revealed.',
-                  style: AppTextStyles.label.copyWith(color: AppColors.gold),
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn().shake(hz: 2),
-            Text(GameUtils.decodeHtmlEntities(question['question']), 
-                style: AppTextStyles.headline, textAlign: TextAlign.center)
-                .animate(key: ValueKey(room.currentQuestionIndex))
-                .fadeIn(),
-            const SizedBox(height: 32),
-            ..._shuffledOptions
-                .where((opt) => !_hiddenOptions.contains(opt))
-                .map((opt) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _AnswerButton(
-                text: GameUtils.decodeHtmlEntities(opt),
-                isSelected: _selectedAnswer == opt,
-                isCorrect: _hasAnswered && opt == question['correct_answer'],
-                isWrong: _hasAnswered && _selectedAnswer == opt && opt != question['correct_answer'],
-                onTap: () => _onAnswerSelected(opt),
-              ),
           ],
         ),
       ),
@@ -595,14 +571,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
       ..shuffle();
   }
 
-  void _useFiftyFifty(GameRoomModel room) {
-    if (_hasUsedFiftyFifty || _hasAnswered) return;
-    final question = room.questions[room.currentQuestionIndex];
-    final wrong = _shuffledOptions.where((o) => o != question['correct_answer']).toList()..shuffle();
-    setState(() {
-      _hasUsedFiftyFifty = true;
-      _fiftyFiftyHiddenOptions = wrong.take(2).toList();
-    });
   void _useLifeline(GameRoomModel room, String type) async {
     if (_hasAnswered) return;
     if (type == 'oneOption' && _hasUsedOneOptionLifeline) return;
@@ -638,9 +606,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
         }
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error using lifeline: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error using lifeline: $e')),
+        );
+      }
     }
   }
 
@@ -739,7 +709,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final question = room.arenaBreakerQuestion;
     if (question == null) return const Center(child: CircularProgressIndicator());
 
-    // Refresh options if the AB question has changed
     final qTextRaw = question['question']?.toString();
     if (_lastABQuestionText != qTextRaw) {
       _prepareABOptions(question);
