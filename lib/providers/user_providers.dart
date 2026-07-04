@@ -13,8 +13,6 @@ import 'package:questarena/data/models/user_model.dart';
 import 'package:questarena/data/models/match_history_model.dart';
 import 'package:questarena/data/models/leaderboard_model.dart';
 import 'package:questarena/core/errors/result.dart';
-import '../data/models/user_model.dart';
-import '../data/models/match_history_model.dart';
 
 final dioProvider = Provider((ref) => Dio(BaseOptions(
   connectTimeout: const Duration(seconds: 5),
@@ -64,12 +62,20 @@ final userMatchHistoryProvider = FutureProvider.family<List<MatchModel>, String>
 });
 
 // Real-time friends system providers
-final friendsProvider = StreamProvider.autoDispose<List<LeaderboardModel>>((ref) {
+final friendUidsProvider = StreamProvider.autoDispose<List<String>>((ref) {
   final authState = ref.watch(authStateProvider).value;
   if (authState == null) return Stream.value([]);
   
   final repo = ref.watch(friendsRepositoryProvider);
-  return repo.watchFriends(authState.uid);
+  return repo.watchFriendUids(authState.uid);
+});
+
+final friendsProvider = StreamProvider.autoDispose<List<LeaderboardModel>>((ref) {
+  final uids = ref.watch(friendUidsProvider).value ?? [];
+  if (uids.isEmpty) return Stream.value([]);
+  
+  final repo = ref.watch(friendsRepositoryProvider);
+  return repo.watchFriendsLive(uids);
 });
 
 final incomingRequestsProvider = StreamProvider.autoDispose<List<QueryDocumentSnapshot<Map<String, dynamic>>>>((ref) {

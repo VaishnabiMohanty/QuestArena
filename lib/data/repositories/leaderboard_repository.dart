@@ -15,9 +15,9 @@ class LeaderboardRepository {
 
   Future<Result<List<LeaderboardModel>>> getTopPlayers() async {
     try {
+      // Use single orderBy to avoid composite index requirement
       final snapshot = await _db
           .collection('users')
-          .orderBy('level', descending: true)
           .orderBy('xp', descending: true)
           .limit(100)
           .get();
@@ -25,6 +25,13 @@ class LeaderboardRepository {
       final players = snapshot.docs
           .map((doc) => LeaderboardModel.fromJson(doc.data()))
           .toList();
+
+      // Perform secondary sorting in memory
+      players.sort((a, b) {
+        int cmp = b.xp.compareTo(a.xp);
+        if (cmp == 0) cmp = b.level.compareTo(a.level);
+        return cmp;
+      });
 
       return Success(players);
     } catch (e) {
@@ -35,14 +42,22 @@ class LeaderboardRepository {
   Stream<List<LeaderboardModel>> watchTopPlayers() {
     return _db
         .collection('users')
-        .orderBy('level', descending: true)
         .orderBy('xp', descending: true)
         .limit(100)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final players = snapshot.docs
           .map((doc) => LeaderboardModel.fromJson(doc.data()))
           .toList();
+
+      // Perform secondary sorting in memory to avoid "Failed Precondition" index errors
+      players.sort((a, b) {
+        int cmp = b.xp.compareTo(a.xp);
+        if (cmp == 0) cmp = b.level.compareTo(a.level);
+        return cmp;
+      });
+
+      return players;
     });
   }
 }

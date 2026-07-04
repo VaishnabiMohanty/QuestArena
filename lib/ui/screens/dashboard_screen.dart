@@ -503,60 +503,78 @@ class _MatchHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = match.isWin ? AppColors.neonCyan : AppColors.neonPink;
+    final color = match.isWin ? AppColors.teal : AppColors.red;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surface),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 6,
+              color: color,
             ),
-            child: Icon(
-                match.isWin ? Icons.check_rounded : Icons.close_rounded,
-                color: color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('vs ${match.opponentName}',
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-                Text(match.timeAgo,
-                    style: const TextStyle(
-                        color: AppColors.textMuted, fontSize: 11)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                match.isWin ? 'WIN' : 'LOSS',
-                style: TextStyle(
-                    color: color, fontSize: 11,
-                    fontWeight: FontWeight.w800, letterSpacing: 1.5),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+                      ),
+                      child: Icon(
+                          match.isWin ? Icons.check_rounded : Icons.close_rounded,
+                          color: color, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(match.opponentName,
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(
+                            match.isWin ? 'VICTORY' : 'DEFEAT',
+                            style: TextStyle(
+                                color: color, fontSize: 10,
+                                fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                          ),
+                          Text(match.timeAgo,
+                              style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('+${match.xpGained} XP',
+                            style: const TextStyle(
+                                color: AppColors.gold,
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              Text('+${match.xpGained} XP',
-                  style: const TextStyle(
-                      color: AppColors.neonAmber,
-                      fontSize: 11, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

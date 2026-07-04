@@ -27,6 +27,9 @@ class UserModel {
   final int rankProtectionMatches;
   final bool rankProtectionActive;
   final int ownedShieldPackage;
+  final String? guildId;
+  final int weeklyXp;
+  final int weeklyWins;
 
   UserModel({
     required this.uid,
@@ -55,6 +58,9 @@ class UserModel {
     this.rankProtectionMatches = 0,
     this.rankProtectionActive = false,
     this.ownedShieldPackage = 0,
+    this.guildId,
+    this.weeklyXp = 0,
+    this.weeklyWins = 0,
   });
 
   // Calculated getters (Single source of truth)
@@ -105,6 +111,9 @@ class UserModel {
       rankProtectionMatches: json['rankProtectionMatches'] ?? 0,
       rankProtectionActive: json['rankProtectionActive'] ?? false,
       ownedShieldPackage: json['ownedShieldPackage'] ?? 0,
+      guildId: json['guildId'],
+      weeklyXp: json['weeklyXp'] ?? 0,
+      weeklyWins: json['weeklyWins'] ?? 0,
     );
   }
 
@@ -138,6 +147,9 @@ class UserModel {
         'rankProtectionMatches': rankProtectionMatches,
         'rankProtectionActive': rankProtectionActive,
         'ownedShieldPackage': ownedShieldPackage,
+        'guildId': guildId,
+        'weeklyXp': weeklyXp,
+        'weeklyWins': weeklyWins,
       };
 
   UserModel copyWith({
@@ -166,6 +178,10 @@ class UserModel {
     int? rankProtectionMatches,
     bool? rankProtectionActive,
     int? ownedShieldPackage,
+    String? guildId,
+    bool clearGuildId = false,
+    int? weeklyXp,
+    int? weeklyWins,
   }) {
     return UserModel(
       uid: uid,
@@ -195,6 +211,9 @@ class UserModel {
           rankProtectionMatches ?? this.rankProtectionMatches,
       rankProtectionActive: rankProtectionActive ?? this.rankProtectionActive,
       ownedShieldPackage: ownedShieldPackage ?? this.ownedShieldPackage,
+      guildId: clearGuildId ? null : (guildId ?? this.guildId),
+      weeklyXp: weeklyXp ?? this.weeklyXp,
+      weeklyWins: weeklyWins ?? this.weeklyWins,
     );
   }
 }

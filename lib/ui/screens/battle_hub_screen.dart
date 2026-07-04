@@ -5,6 +5,10 @@ import '../../core/constants/colors.dart';
 import '../../providers/user_providers.dart';
 import '../../providers/shop_provider.dart';
 
+import 'package:questarena/providers/guild_providers.dart';
+import 'guild/guild_home_screen.dart';
+import 'guild/guild_dialogs.dart';
+
 // ─── Battle Hub Screen ────────────────────────────────────────────────────────
 // Redesigned version of the battle_screen / battle hub
 // Three mode cards: Ranked Match, Private Duel, Practice
@@ -56,6 +60,13 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
       color: AppColors.neonCyan,
       tag: 'FREE PLAY',
     ),
+    _BattleMode(
+      title: 'GUILDS',
+      subtitle: 'Team up and battle',
+      icon: Icons.groups_rounded,
+      color: AppColors.neonPink,
+      tag: 'SOCIAL',
+    ),
   ];
 
   @override
@@ -63,7 +74,7 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
     super.initState();
     _titleAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
-    _cardAnims = List.generate(3, (_) => AnimationController(
+    _cardAnims = List.generate(_modes.length, (_) => AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500)));
     _cardFades = _cardAnims.map((c) =>
         CurvedAnimation(parent: c, curve: Curves.easeOut)).toList();
@@ -77,7 +88,7 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
   Future<void> _runEntrance() async {
     await Future.delayed(const Duration(milliseconds: 80));
     _titleAnim.forward();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < _cardAnims.length; i++) {
       await Future.delayed(const Duration(milliseconds: 120));
       _cardAnims[i].forward();
     }
@@ -135,7 +146,17 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
     switch (i) {
       case 0: return widget.onRankedTap;
       case 1: return widget.onPrivateTap;
-      default: return widget.onPracticeTap;
+      case 2: return widget.onPracticeTap;
+      default: return _handleGuildsTap;
+    }
+  }
+
+  void _handleGuildsTap() {
+    final user = ref.read(currentUserProvider).value;
+    if (user?.guildId == null) {
+      showGuildOptionsDialog(context, ref);
+    } else {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const GuildHomeScreen()));
     }
   }
 
@@ -208,19 +229,18 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
 
               // ── Mode cards ───────────────────────────────────────────────
               Expanded(
-                child: Column(
+                child: ListView(
+                  padding: EdgeInsets.zero,
                   children: List.generate(_modes.length, (i) {
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: FadeTransition(
-                          opacity: _cardFades[i],
-                          child: SlideTransition(
-                            position: _cardSlides[i],
-                            child: _BattleModeCard(
-                              mode: _modes[i],
-                              onTap: _callbackFor(i),
-                            ),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: FadeTransition(
+                        opacity: _cardFades[i],
+                        child: SlideTransition(
+                          position: _cardSlides[i],
+                          child: _BattleModeCard(
+                            mode: _modes[i],
+                            onTap: _callbackFor(i),
                           ),
                         ),
                       ),

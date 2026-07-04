@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/constants/colors.dart';
-import '../../../core/constants/text_styles.dart';
-import '../../../core/utils/rank_system.dart';
-import '../../../providers/user_providers.dart';
-import '../../../providers/auth_providers.dart';
-import '../../../providers/leaderboard_providers.dart';
-import '../../../data/models/leaderboard_model.dart';
-import '../../../data/models/user_model.dart';
-import '../../widgets/neon_swirl_background.dart';
-import '../../widgets/smart_avatar.dart';
-import 'edit_profile_screen.dart';
-import 'leaderboard_tab.dart'; 
+import 'package:questarena/core/constants/colors.dart';
+import 'package:questarena/core/constants/text_styles.dart';
+import 'package:questarena/core/utils/rank_system.dart';
+import 'package:questarena/providers/user_providers.dart';
+import 'package:questarena/providers/auth_providers.dart';
+import 'package:questarena/providers/leaderboard_providers.dart';
+import 'package:questarena/data/models/leaderboard_model.dart';
+import 'package:questarena/data/models/user_model.dart';
+import 'package:questarena/ui/widgets/neon_swirl_background.dart';
+import 'package:questarena/ui/widgets/smart_avatar.dart';
+import 'package:questarena/ui/widgets/expandable_player_card.dart';
+import 'package:questarena/ui/screens/tabs/edit_profile_screen.dart';
+import 'package:questarena/ui/screens/tabs/leaderboard_tab.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -76,7 +77,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Failed to open email app. Please email imaginati.appdev@gmail.com directly.'),
             backgroundColor: AppColors.neonPink,
           ),
@@ -423,11 +424,11 @@ class _FriendRequestsSection extends ConsumerWidget {
                       Row(
                         children: [
                           IconButton(
-                            onPressed: () => ref.read(friendsRepositoryProvider).acceptFriendRequest(request.id, data),
+                            onPressed: () => _showConfirmDialog(context, ref, request.id, data, true),
                             icon: const Icon(Icons.check_circle_rounded, color: AppColors.teal),
                           ),
                           IconButton(
-                            onPressed: () => ref.read(friendsRepositoryProvider).rejectFriendRequest(request.id),
+                            onPressed: () => _showConfirmDialog(context, ref, request.id, data, false),
                             icon: const Icon(Icons.cancel_rounded, color: AppColors.red),
                           ),
                         ],
@@ -440,6 +441,31 @@ class _FriendRequestsSection extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showConfirmDialog(BuildContext context, WidgetRef ref, String requestId, Map<String, dynamic> requestData, bool isAccept) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: Text(isAccept ? 'Accept Request?' : 'Decline Request?', style: AppTextStyles.headline.copyWith(fontSize: 18)),
+        content: Text('Are you sure you want to ${isAccept ? 'accept' : 'decline'} the friend request from ${requestData['senderUsername']}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              if (isAccept) {
+                ref.read(friendsRepositoryProvider).acceptFriendRequest(requestId, requestData);
+              } else {
+                ref.read(friendsRepositoryProvider).rejectFriendRequest(requestId);
+              }
+              Navigator.pop(context);
+            },
+            child: Text(isAccept ? 'Accept' : 'Decline', style: TextStyle(color: isAccept ? AppColors.teal : AppColors.red)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -475,7 +501,7 @@ class _FriendsListSection extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ExpandedDetails(uid: friend.uid, player: friend, isMe: false),
+                ExpandedDetails(uid: friend.uid, isMe: false),
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),

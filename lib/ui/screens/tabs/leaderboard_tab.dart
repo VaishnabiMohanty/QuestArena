@@ -14,6 +14,7 @@ import 'package:questarena/providers/user_providers.dart';
 import 'package:questarena/providers/navigation_providers.dart';
 import 'package:questarena/core/utils/rank_system.dart';
 import 'package:questarena/ui/widgets/smart_avatar.dart';
+import 'package:questarena/ui/widgets/expandable_player_card.dart';
 
 class LeaderboardTab extends ConsumerStatefulWidget {
   const LeaderboardTab({super.key});
@@ -144,12 +145,19 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                     final isMe = player.uid == currentUser?.uid;
                     final isExpanded = _selectedUid == player.uid;
 
-                    return _ExpandablePlayerCard(
-                      player: player,
+                    return ExpandablePlayerCard(
+                      uid: player.uid,
+                      username: player.username,
+                      avatarUrl: player.avatarUrl,
+                      level: player.level,
+                      xp: player.xp,
+                      rank: player.rank,
+                      subRank: player.subRank,
                       isMe: isMe,
                       isExpanded: isExpanded,
                       index: index,
                       onTap: () => _toggleProfile(player.uid),
+                      badge: _RankBadge(index: index),
                     );
                   },
                   childCount: players.length,
@@ -185,7 +193,13 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
           ));
         }
         list.addAll(friends);
-        list.sort((a, b) => b.xp.compareTo(a.xp));
+        
+        // Sort by XP descending (Primary), then Level descending (Secondary)
+        list.sort((a, b) {
+          int cmp = b.xp.compareTo(a.xp);
+          if (cmp == 0) cmp = b.level.compareTo(a.level);
+          return cmp;
+        });
 
         if (friends.isEmpty && list.length <= 1) {
           return Center(
@@ -218,12 +232,19 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                     final isMe = player.uid == currentUser?.uid;
                     final isExpanded = _selectedUid == player.uid;
 
-                    return _ExpandablePlayerCard(
-                      player: player,
+                    return ExpandablePlayerCard(
+                      uid: player.uid,
+                      username: player.username,
+                      avatarUrl: player.avatarUrl,
+                      level: player.level,
+                      xp: player.xp,
+                      rank: player.rank,
+                      subRank: player.subRank,
                       isMe: isMe,
                       isExpanded: isExpanded,
                       index: index,
                       onTap: () => _toggleProfile(player.uid),
+                      badge: _RankBadge(index: index),
                     );
                   },
                   childCount: list.length,
@@ -234,460 +255,6 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
           ],
         );
       },
-    );
-  }
-}
-
-class _ExpandablePlayerCard extends ConsumerWidget {
-  final LeaderboardModel player;
-  final bool isMe;
-  final bool isExpanded;
-  final int index;
-  final VoidCallback onTap;
-
-  const _ExpandablePlayerCard({
-    required this.player,
-    required this.isMe,
-    required this.isExpanded,
-    required this.index,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedScale(
-        scale: isExpanded ? 1.02 : 1.0,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutCubic,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: EdgeInsets.all(isExpanded ? 20 : 12),
-          decoration: BoxDecoration(
-            color: AppColors.cardBg,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isExpanded ? Colors.white : (isMe ? AppColors.purple : AppColors.surface),
-              width: isExpanded ? 1.5 : (isMe ? 1.5 : 1),
-            ),
-            boxShadow: isExpanded ? [
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.1),
-                blurRadius: 15,
-                spreadRadius: 2,
-              )
-            ] : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  SizedBox(
-                    width: 40,
-                    child: _RankBadge(index: index),
-                  ),
-
-                  // Restored premium glow around avatar when expanded
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (isExpanded)
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.gold.withValues(alpha: 0.3),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                        ).animate().scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1), duration: 400.ms),
-                      SmartAvatar(
-                        avatarUrl: player.avatarUrl,
-                        size: isExpanded ? 65 : 45,
-                        showBorder: isExpanded,
-                        showGlow: false,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          player.username,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.headline.copyWith(
-                            fontSize: isExpanded ? 22 : 18,
-                            color: isExpanded ? AppColors.gold : Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'LVL ${player.level} • ${RankSystem.getRankName(player.rank, player.subRank)}',
-                          style: AppTextStyles.label.copyWith(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        // Restored "Add Friend" button below the rank/level line
-                        if (isExpanded) ...[
-                          const SizedBox(height: 12),
-                          _ActionButton(uid: player.uid, isMe: isMe),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  if (!isExpanded)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('${player.xp}', style: AppTextStyles.headline.copyWith(fontSize: 20, color: AppColors.gold)),
-                        Text('XP', style: AppTextStyles.label.copyWith(fontSize: 8, color: AppColors.textMuted)),
-                      ],
-                    ),
-                ],
-              ),
-
-              AnimatedSize(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: isExpanded
-                    ? ExpandedDetails(uid: player.uid, player: player, isMe: isMe)
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(delay: Duration(milliseconds: index * 30)).slideX(begin: 0.05, end: 0);
-  }
-}
-
-class ExpandedDetails extends ConsumerWidget {
-  final String uid;
-  final LeaderboardModel player;
-  final bool isMe;
-
-  const ExpandedDetails({super.key, required this.uid, required this.player, required this.isMe});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profileAsync = ref.watch(userProfileProvider(uid));
-
-    return profileAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold)),
-      ),
-      error: (e, s) => Text('Error loading stats', style: AppTextStyles.label.copyWith(color: AppColors.red)),
-      data: (user) {
-        if (user == null) return const SizedBox.shrink();
-
-        final int xp = user.xp;
-        final int wins = user.wins;
-        final int streak = user.currentWinStreak;
-        final int matches = user.matchesPlayed;
-        final double winRate = user.winRate;
-
-        final achievements = [
-          {'id': 'first_win', 'name': 'First Blood', 'icon': Icons.flash_on_rounded},
-          {'id': 'on_fire', 'name': 'On Fire', 'icon': Icons.whatshot},
-          {'id': 'veteran', 'name': 'Veteran', 'icon': Icons.military_tech},
-          {'id': 'scholar', 'name': 'Scholar', 'icon': Icons.school},
-          {'id': 'arena_breaker', 'name': 'Arena Breaker', 'icon': Icons.security},
-        ];
-
-        final unlockedIds = user.achievements;
-        final unlocked = achievements.where((a) => unlockedIds.contains(a['id'])).toList();
-
-        return Padding(
-          padding: const EdgeInsets.only(top: 24),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    StatItem(icon: Icons.stars_rounded, value: '$xp', label: 'XP', color: AppColors.purple),
-                    StatItem(icon: Icons.emoji_events_rounded, value: '$wins', label: 'WINS', color: AppColors.teal),
-                    StatItem(icon: Icons.whatshot_rounded, value: '$streak', label: 'STREAK', color: AppColors.red),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              OverviewRow(label: 'Matches Played', value: '$matches'),
-              OverviewRow(label: 'Win Rate', value: '${winRate.toStringAsFixed(1)}%'),
-              OverviewRow(label: 'Current Rank', value: RankSystem.getRankName(user.rank, user.subRank)),
-              OverviewRow(label: 'Total XP', value: '$xp'),
-
-              if (unlocked.isNotEmpty) ...[
-                const SizedBox(height: 32),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('ACHIEVEMENTS', style: AppTextStyles.label.copyWith(fontSize: 10, letterSpacing: 1.5, color: AppColors.textMuted)),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: unlocked.map((a) => AchievementChip(icon: a['icon'] as IconData, name: a['name'] as String)).toList(),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class StatItem extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  const StatItem({super.key, required this.icon, required this.value, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(height: 10),
-        Text(value, style: AppTextStyles.headline.copyWith(fontSize: 20, color: Colors.white)),
-        Text(label, style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.textMuted, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-}
-
-class OverviewRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const OverviewRow({super.key, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppTextStyles.bodyMd.copyWith(color: AppColors.textMuted, fontSize: 15)),
-          Text(value, style: AppTextStyles.headline.copyWith(fontSize: 16, color: Colors.white)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends ConsumerWidget {
-  final String uid;
-  final bool isMe;
-
-  const _ActionButton({required this.uid, required this.isMe});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (isMe) {
-      return ElevatedButton(
-        onPressed: () => ref.read(tabIndexProvider.notifier).state = 3,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          minimumSize: const Size(110, 36),
-          shape: const StadiumBorder(),
-          elevation: 0,
-        ),
-        child: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-      );
-    }
-
-    final friendsAsync = ref.watch(friendsProvider);
-    final List<LeaderboardModel> friends = friendsAsync.value ?? [];
-    final bool isFriend = friends.any((LeaderboardModel f) => f.uid == uid);
-    
-    final incomingRequests = ref.watch(incomingRequestsProvider).value ?? [];
-    final receivedRequest = incomingRequests.where(
-      (r) => (r.data() as Map<String, dynamic>)['senderUid'] == uid
-    ).firstOrNull;
-    
-    final outgoingRequests = ref.watch(outgoingRequestsProvider).value ?? [];
-    final sentRequest = outgoingRequests.any(
-      (r) => (r.data() as Map<String, dynamic>)['receiverUid'] == uid
-    );
-
-    String label = '+ Add Friend';
-    Color bgColor = AppColors.purple;
-    VoidCallback? onPressed;
-
-    if (isFriend) {
-      label = 'Friends';
-      bgColor = AppColors.teal.withValues(alpha: 0.2);
-      onPressed = () => _showRemoveDialog(context, ref);
-    } else if (sentRequest) {
-      label = 'Request Sent';
-      bgColor = AppColors.surface;
-      onPressed = null;
-    } else if (receivedRequest != null) {
-      label = 'Respond';
-      bgColor = AppColors.gold;
-      onPressed = () => _showRespondOptions(context, ref, receivedRequest.id, receivedRequest.data());
-    } else {
-      onPressed = () async {
-        final currentUser = ref.read(currentUserProvider).value;
-        if (currentUser == null) return;
-        
-        final playerDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        if (!playerDoc.exists) return;
-        final playerData = playerDoc.data()!;
-
-        await ref.read(friendsRepositoryProvider).sendFriendRequest(
-          sender: currentUser,
-          receiverUid: uid,
-          receiverUsername: playerData['username'],
-          receiverAvatar: playerData['avatarUrl'],
-        );
-      };
-    }
-
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        minimumSize: const Size(110, 36),
-        shape: const StadiumBorder(),
-        side: isFriend ? const BorderSide(color: AppColors.teal, width: 1) : null,
-        elevation: 0,
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-      ),
-    );
-  }
-
-  void _showRespondOptions(BuildContext context, WidgetRef ref, String requestId, Map<String, dynamic> requestData) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.cardBg,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Friend Request from ${requestData['senderUsername']}', style: AppTextStyles.headline.copyWith(fontSize: 18)),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      ref.read(friendsRepositoryProvider).acceptFriendRequest(requestId, requestData);
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal),
-                    child: const Text('Accept', style: TextStyle(color: Colors.white)),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () {
-                      ref.read(friendsRepositoryProvider).rejectFriendRequest(requestId);
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Decline', style: TextStyle(color: AppColors.red)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRemoveDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardBg,
-        title: Text('Remove Friend?', style: AppTextStyles.headline.copyWith(fontSize: 18)),
-        content: const Text('Are you sure you want to remove this friend?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              final currentUid = ref.read(currentUserProvider).value?.uid;
-              if (currentUid != null) {
-                ref.read(friendsRepositoryProvider).removeFriend(currentUid, uid);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Remove', style: TextStyle(color: AppColors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class AchievementChip extends StatelessWidget {
-  final IconData icon;
-  final String name;
-
-  const AchievementChip({super.key, required this.icon, required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: AppColors.gold, size: 14),
-          const SizedBox(width: 8),
-          Text(name.toUpperCase(), style: AppTextStyles.label.copyWith(color: AppColors.gold, fontSize: 9, fontWeight: FontWeight.bold)),
-        ],
-      ),
     );
   }
 }
@@ -785,7 +352,7 @@ class _TopPlayerCard extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // Profile Image with RESTORED circular radial glow
+                // Profile Image with circular radial glow
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -830,7 +397,7 @@ class _TopPlayerCard extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // Stats Row (Previous version layout)
+                // Stats Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
