@@ -97,6 +97,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         opponentAvatar: opData?['avatarUrl'],
         isRanked: widget.room.isRanked,
         rankProtectionActive: rankProtectionActive,
+        opponentElo: opData?['eloRating'],
+        isArenaBreaker: widget.room.isArenaBreaker,
       );
 
       await ref.read(gameRepositoryProvider).claimRewards(
