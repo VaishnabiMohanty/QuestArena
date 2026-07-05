@@ -92,11 +92,10 @@ class UserModel {
     this.guildId,
     this.weeklyXp = 0,
     this.weeklyWins = 0,
-  });
     this.lastDailyBonusDate,
-  })  : lastCoinResetDate = lastCoinResetDate ?? DateTime(2000),
-        lastDailyLoginRewardDate = lastDailyLoginRewardDate ?? DateTime(2000),
-        lastLoginDate = lastLoginDate ?? DateTime(2000);
+  })  : lastCoinResetDate = lastCoinResetDate ?? DateTime(2000, 1, 1),
+        lastDailyLoginRewardDate = lastDailyLoginRewardDate ?? DateTime(2000, 1, 1),
+        lastLoginDate = lastLoginDate ?? DateTime(2000, 1, 1);
 
   // Calculated getters
   int get matchesPlayed => wins + losses + draws;

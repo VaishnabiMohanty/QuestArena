@@ -9,7 +9,6 @@ import '../../../data/models/matchmaking_model.dart';
 import '../matchmaking_screen.dart';
 import '../private_room_screen.dart';
 import '../../../features/practice/screens/practice_setup_screen.dart';
-import '../../../providers/guild_providers.dart';
 import '../guild/guild_home_screen.dart';
 import '../guild/guild_dialogs.dart';
 import '../../widgets/neon_swirl_background.dart';

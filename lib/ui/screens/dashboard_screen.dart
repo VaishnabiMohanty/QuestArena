@@ -3,15 +3,10 @@ import 'package:flutter/services.dart';
 import '../../core/constants/colors.dart';
 import '../widgets/character_avatar.dart';
 
-// ─── Dashboard Screen ─────────────────────────────────────────────────────
-// Replaces the existing home_screen.dart visual layer.
-// Preserves all data wiring — only UI & animation changed.
-
 class DashboardScreen extends StatefulWidget {
-  // Pass in data from your existing Riverpod providers:
   final String username;
   final CharacterData character;
-  final String rank;          // e.g. "Bronze"
+  final String rank;
   final int level;
   final int currentXP;
   final int maxXP;
@@ -49,29 +44,18 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
-    _heroAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _xpAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _statsAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
-    _historyAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+    _heroAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _xpAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _statsAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _historyAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
 
     _xpFill = Tween<double>(begin: 0, end: widget.currentXP / widget.maxXP)
         .animate(CurvedAnimation(parent: _xpAnim, curve: Curves.easeOutCubic));
 
-    _runEntrance();
-  }
-
-  Future<void> _runEntrance() async {
     _heroAnim.forward();
-    await Future.delayed(const Duration(milliseconds: 300));
-    _xpAnim.forward();
-    await Future.delayed(const Duration(milliseconds: 200));
-    _statsAnim.forward();
-    await Future.delayed(const Duration(milliseconds: 150));
-    _historyAnim.forward();
+    Future.delayed(const Duration(milliseconds: 300), () => _xpAnim.forward());
+    Future.delayed(const Duration(milliseconds: 500), () => _statsAnim.forward());
+    Future.delayed(const Duration(milliseconds: 650), () => _historyAnim.forward());
   }
 
   @override
@@ -87,7 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     switch (widget.rank.toLowerCase()) {
       case 'bronze': return AppColors.rankBronze;
       case 'silver': return AppColors.rankSilver;
-      case 'gold':   return AppColors.rankGold;
+      case 'gold': return AppColors.rankGold;
       case 'platinum': return AppColors.rankPlatinum;
       default: return AppColors.textSecondary;
     }
@@ -99,135 +83,33 @@ class _DashboardScreenState extends State<DashboardScreen>
       backgroundColor: AppColors.bgBase,
       appBar: AppBar(
         backgroundColor: AppColors.bgBase,
-        title: const Text(
-          'DASHBOARD',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 3,
-          ),
-        ),
+        title: const Text('DASHBOARD', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 3)),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                widget.onStoreTap();
-              },
-              child: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.neonAmber.withValues(alpha: 0.3), width: 0.5),
-                  boxShadow: [BoxShadow(
-                      color: AppColors.neonAmber.withValues(alpha: 0.15),
-                      blurRadius: 8)],
-                ),
-                child: const Icon(Icons.storefront_rounded,
-                    color: AppColors.neonAmber, size: 20),
-              ),
-            ),
+          IconButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              widget.onStoreTap();
+            },
+            icon: const Icon(Icons.storefront_rounded, color: AppColors.neonAmber),
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Hero card (profile) ─────────────────────────────────────────
-            FadeTransition(
-              opacity: _heroAnim,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                    begin: const Offset(0, -0.15), end: Offset.zero)
-                    .animate(CurvedAnimation(
-                    parent: _heroAnim, curve: Curves.easeOutCubic)),
-                child: _ProfileHeroCard(
-                  username: widget.username,
-                  character: widget.character,
-                  rank: widget.rank,
-                  rankColor: _rankColor,
-                  level: widget.level,
-                  currentXP: widget.currentXP,
-                  maxXP: widget.maxXP,
-                  xpFill: _xpFill,
-                ),
-              ),
-            ),
+            FadeTransition(opacity: _heroAnim, child: _ProfileHeroCard(username: widget.username, character: widget.character, rank: widget.rank, rankColor: _rankColor, level: widget.level, currentXP: widget.currentXP, maxXP: widget.maxXP, xpFill: _xpFill)),
             const SizedBox(height: 24),
-
-            // ── Quick stats ────────────────────────────────────────────────
-            FadeTransition(
-              opacity: _statsAnim,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                    begin: const Offset(0, 0.15), end: Offset.zero)
-                    .animate(CurvedAnimation(
-                    parent: _statsAnim, curve: Curves.easeOutCubic)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _SectionHeader(label: 'QUICK STATS'),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            value: widget.wins.toString(),
-                            label: 'WINS',
-                            color: AppColors.neonCyan,
-                            icon: Icons.emoji_events_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            value: widget.losses.toString(),
-                            label: 'LOSSES',
-                            color: AppColors.neonPink,
-                            icon: Icons.close_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            FadeTransition(opacity: _statsAnim, child: _StatsSection(wins: widget.wins, losses: widget.losses)),
             const SizedBox(height: 24),
-
-            // ── Recent history ─────────────────────────────────────────────
-            FadeTransition(
-              opacity: _historyAnim,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionHeader(label: 'RECENT HISTORY'),
-                  const SizedBox(height: 10),
-                  widget.recentHistory.isEmpty
-                      ? const _EmptyHistory()
-                      : Column(
-                    children: widget.recentHistory
-                        .map((m) => _MatchHistoryCard(match: m))
-                        .toList(),
-                  ),
-                ],
-              ),
-            ),
+            FadeTransition(opacity: _historyAnim, child: _HistorySection(history: widget.recentHistory)),
           ],
         ),
       ),
     );
   }
 }
-
-// ─── Profile Hero Card ───────────────────────────────────────────────────────
 
 class _ProfileHeroCard extends StatelessWidget {
   final String username;
@@ -239,145 +121,32 @@ class _ProfileHeroCard extends StatelessWidget {
   final int maxXP;
   final Animation<double> xpFill;
 
-  const _ProfileHeroCard({
-    required this.username,
-    required this.character,
-    required this.rank,
-    required this.rankColor,
-    required this.level,
-    required this.currentXP,
-    required this.maxXP,
-    required this.xpFill,
-  });
+  const _ProfileHeroCard({required this.username, required this.character, required this.rank, required this.rankColor, required this.level, required this.currentXP, required this.maxXP, required this.xpFill});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: rankColor.withValues(alpha: 0.35), width: 0.8),
-        boxShadow: [
-          BoxShadow(
-              color: rankColor.withValues(alpha: 0.10),
-              blurRadius: 20,
-              spreadRadius: 2),
-          BoxShadow(
-              color: AppColors.neonViolet.withValues(alpha: 0.05),
-              blurRadius: 40),
-        ],
-      ),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(16), border: Border.all(color: rankColor.withValues(alpha: 0.35))),
       child: Row(
         children: [
-          // Avatar with rank ring
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              CharacterAvatar(
-                character: character,
-                size: 72,
-                showGlow: true,
-                showBorder: true,
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.bgDeep,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: rankColor.withValues(alpha: 0.6), width: 0.5),
-                ),
-                child: Text(
-                  rank.isNotEmpty ? rank.toUpperCase()[0] : 'U', 
-                  style: TextStyle(
-                    color: rankColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          CharacterAvatar(character: character, size: 72, showGlow: true, showBorder: true),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  username,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    const Text(
-                      'Rank: ',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 12),
-                    ),
-                    Text(
-                      rank,
-                      style: TextStyle(
-                        color: rankColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                Text(username, style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(rank, style: TextStyle(color: rankColor, fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                // XP bar
                 AnimatedBuilder(
                   animation: xpFill,
-                  builder: (_, __) => Column(
+                  builder: (context, _) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Stack(
-                        children: [
-                          // Track
-                          Container(
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: AppColors.bgInputField,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                          // Fill
-                          FractionallySizedBox(
-                            widthFactor: xpFill.value.clamp(0.0, 1.0),
-                            child: Container(
-                              height: 5,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [
-                                  rankColor,
-                                  rankColor.withValues(alpha: 0.6),
-                                ]),
-                                borderRadius: BorderRadius.circular(3),
-                                boxShadow: [
-                                  BoxShadow(
-                                      color: rankColor.withValues(alpha: 0.6),
-                                      blurRadius: 6),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Level $level  –  $currentXP/$maxXP XP',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
+                      LinearProgressIndicator(value: xpFill.value, backgroundColor: AppColors.bgInputField, color: rankColor, minHeight: 6),
+                      const SizedBox(height: 4),
+                      Text('Level $level  –  $currentXP/$maxXP XP', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -390,272 +159,94 @@ class _ProfileHeroCard extends StatelessWidget {
   }
 }
 
-// ─── Stat Card ───────────────────────────────────────────────────────────────
-
-class _StatCard extends StatefulWidget {
-  final String value;
-  final String label;
-  final Color color;
-  final IconData icon;
-
-  const _StatCard({
-    required this.value,
-    required this.label,
-    required this.color,
-    required this.icon,
-  });
+class _StatsSection extends StatelessWidget {
+  final int wins;
+  final int losses;
+  const _StatsSection({required this.wins, required this.losses});
 
   @override
-  State<_StatCard> createState() => _StatCardState();
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _StatCard(label: 'WINS', value: '$wins', color: AppColors.neonCyan, icon: Icons.emoji_events_rounded)),
+        const SizedBox(width: 12),
+        Expanded(child: _StatCard(label: 'LOSSES', value: '$losses', color: AppColors.neonPink, icon: Icons.close_rounded)),
+      ],
+    );
+  }
 }
 
-class _StatCardState extends State<_StatCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _shimmerCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _shimmerCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 3))
-      ..repeat();
-  }
-
-  @override
-  void dispose() {
-    _shimmerCtrl.dispose();
-    super.dispose();
-  }
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+  const _StatCard({required this.label, required this.value, required this.color, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 100,
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: widget.color.withValues(alpha: 0.2), width: 0.5),
-        boxShadow: [
-          BoxShadow(
-              color: widget.color.withValues(alpha: 0.08), blurRadius: 12),
-        ],
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: 0.2))),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Neon ring icon
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: widget.color.withValues(alpha: 0.1),
-              border: Border.all(
-                  color: widget.color.withValues(alpha: 0.5), width: 1.5),
-              boxShadow: [BoxShadow(
-                  color: widget.color.withValues(alpha: 0.3), blurRadius: 8)],
-            ),
-            child: Icon(widget.icon, color: widget.color, size: 16),
-          ),
+          Icon(icon, color: color, size: 20),
           const SizedBox(height: 8),
-          Text(
-            widget.value,
-            style: TextStyle(
-              color: widget.color,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            widget.label,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
-            ),
-          ),
+          Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10, letterSpacing: 1.5)),
         ],
       ),
     );
   }
 }
 
-// ─── Match History ────────────────────────────────────────────────────────────
+class _HistorySection extends StatelessWidget {
+  final List<MatchHistoryItem> history;
+  const _HistorySection({required this.history});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('RECENT HISTORY', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        const SizedBox(height: 12),
+        if (history.isEmpty)
+          const Center(child: Text('No matches yet', style: TextStyle(color: AppColors.textMuted)))
+        else
+          ...history.map((m) => _MatchCard(item: m)),
+      ],
+    );
+  }
+}
+
+class _MatchCard extends StatelessWidget {
+  final MatchHistoryItem item;
+  const _MatchCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.isWin ? AppColors.teal : AppColors.red;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.surface)),
+      child: Row(
+        children: [
+          Container(width: 4, height: 40, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('vs ${item.opponentName}', style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)), Text(item.timeAgo, style: const TextStyle(color: AppColors.textMuted, fontSize: 11))])),
+          Text('+${item.xpGained} XP', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
 
 class MatchHistoryItem {
   final String opponentName;
   final bool isWin;
   final int xpGained;
   final String timeAgo;
-  const MatchHistoryItem({
-    required this.opponentName,
-    required this.isWin,
-    required this.xpGained,
-    required this.timeAgo,
-  });
-}
-
-class _MatchHistoryCard extends StatelessWidget {
-  final MatchHistoryItem match;
-  const _MatchHistoryCard({required this.match});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = match.isWin ? AppColors.teal : AppColors.red;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surface),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 6,
-              color: color,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withValues(alpha: 0.4), width: 0.5),
-            ),
-            child: Icon(
-                match.isWin ? Icons.check_rounded : Icons.close_rounded,
-                color: color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('vs ${match.opponentName}',
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-                Text(match.timeAgo,
-                    style: const TextStyle(
-                        color: AppColors.textMuted, fontSize: 11)),
-              ],
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: color.withOpacity(0.4), width: 0.5),
-                      ),
-                      child: Icon(
-                          match.isWin ? Icons.check_rounded : Icons.close_rounded,
-                          color: color, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(match.opponentName,
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 2),
-                          Text(
-                            match.isWin ? 'VICTORY' : 'DEFEAT',
-                            style: TextStyle(
-                                color: color, fontSize: 10,
-                                fontWeight: FontWeight.w900, letterSpacing: 1.5),
-                          ),
-                          Text(match.timeAgo,
-                              style: const TextStyle(
-                                  color: AppColors.textMuted, fontSize: 10)),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('+${match.xpGained} XP',
-                            style: const TextStyle(
-                                color: AppColors.gold,
-                                fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.history_rounded,
-              color: AppColors.textMuted.withValues(alpha: 0.4), size: 36),
-          const SizedBox(height: 12),
-          const Text('No match history yet.',
-              style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          const Text('Start a battle to see your results!',
-              style: TextStyle(
-                  color: AppColors.textMuted, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: AppColors.textMuted,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 2.5,
-      ),
-    );
-  }
+  const MatchHistoryItem({required this.opponentName, required this.isWin, required this.xpGained, required this.timeAgo});
 }

@@ -3,8 +3,16 @@
 
 import 'dart:ui';
 import '../constants/colors.dart';
-
 import 'level_system.dart';
+import 'rank_system.dart';
+
+class RankUpdateResult {
+  final String rank;
+  final int? subRank;
+  final int remainingPoints;
+
+  RankUpdateResult({required this.rank, this.subRank, required this.remainingPoints});
+}
 
 class RankCalculator {
   static String getRank(int xp) {
@@ -29,5 +37,25 @@ class RankCalculator {
   /// Now delegates to the central [LevelSystem].
   static int getXpToNextLevel(int currentLevel) {
     return LevelSystem.xpForNextLevel(currentLevel);
+  }
+
+  static RankUpdateResult calculateNewRank(String currentRank, int? currentSubRank, int points) {
+    String rank = currentRank;
+    int? subRank = currentSubRank;
+    int remainingPoints = points;
+
+    if (remainingPoints >= 100) {
+      final promotion = RankSystem.promote(rank, subRank);
+      rank = promotion['rank'];
+      subRank = promotion['subRank'];
+      remainingPoints -= 100;
+    } else if (remainingPoints < 0) {
+      final demotion = RankSystem.demote(rank, subRank);
+      rank = demotion['rank'];
+      subRank = demotion['subRank'];
+      remainingPoints = rank == currentRank ? 0 : 80; // Start at 80 if demoted
+    }
+
+    return RankUpdateResult(rank: rank, subRank: subRank, remainingPoints: remainingPoints);
   }
 }

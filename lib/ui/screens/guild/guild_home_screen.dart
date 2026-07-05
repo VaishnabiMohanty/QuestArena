@@ -37,12 +37,6 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
       error: (e, s) => Scaffold(body: Center(child: Text('Error: $e'))),
       data: (guild) {
         if (guild == null || (user != null && !guild.memberUids.contains(user.uid))) {
-          if (user?.guildId != null) {
-            Future.microtask(() {
-              ref.read(userRepositoryProvider).updateUserProfile(user!.copyWith(clearGuildId: true));
-              if (context.mounted) Navigator.pop(context);
-            });
-          }
           return const Scaffold(body: Center(child: Text('Guild not found or membership invalid')));
         }
 
@@ -65,37 +59,27 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
             child: CustomScrollView(
               slivers: [
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                // 1. Guild Battle Card
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: GuildBattleCard(guild: guild),
                   ),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // 2. Guild Header
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: _GuildHeader(guild: guild),
                   ),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // 3. Weekly Guild MVP
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: _GuildMvpSection(memberUids: guild.memberUids),
                   ),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-                // 4. Members List Header
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
@@ -105,13 +89,10 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
                     ),
                   ),
                 ),
-
-                // Members List
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   sliver: _buildMembersList(ref, guild),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
