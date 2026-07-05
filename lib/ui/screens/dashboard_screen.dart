@@ -122,9 +122,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                   color: AppColors.bgCard,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: AppColors.neonAmber.withOpacity(0.3), width: 0.5),
+                      color: AppColors.neonAmber.withValues(alpha: 0.3), width: 0.5),
                   boxShadow: [BoxShadow(
-                      color: AppColors.neonAmber.withOpacity(0.15),
+                      color: AppColors.neonAmber.withValues(alpha: 0.15),
                       blurRadius: 8)],
                 ),
                 child: const Icon(Icons.storefront_rounded,
@@ -173,7 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionHeader(label: 'QUICK STATS'),
+                    const _SectionHeader(label: 'QUICK STATS'),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -208,10 +208,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SectionHeader(label: 'RECENT HISTORY'),
+                  const _SectionHeader(label: 'RECENT HISTORY'),
                   const SizedBox(height: 10),
                   widget.recentHistory.isEmpty
-                      ? _EmptyHistory()
+                      ? const _EmptyHistory()
                       : Column(
                     children: widget.recentHistory
                         .map((m) => _MatchHistoryCard(match: m))
@@ -258,14 +258,14 @@ class _ProfileHeroCard extends StatelessWidget {
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: rankColor.withOpacity(0.35), width: 0.8),
+            color: rankColor.withValues(alpha: 0.35), width: 0.8),
         boxShadow: [
           BoxShadow(
-              color: rankColor.withOpacity(0.10),
+              color: rankColor.withValues(alpha: 0.10),
               blurRadius: 20,
               spreadRadius: 2),
           BoxShadow(
-              color: AppColors.neonViolet.withOpacity(0.05),
+              color: AppColors.neonViolet.withValues(alpha: 0.05),
               blurRadius: 40),
         ],
       ),
@@ -286,10 +286,10 @@ class _ProfileHeroCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.bgDeep,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: rankColor.withOpacity(0.6), width: 0.5),
+                  border: Border.all(color: rankColor.withValues(alpha: 0.6), width: 0.5),
                 ),
                 child: Text(
-                  rank.toUpperCase()[0], // first letter of rank
+                  rank.isNotEmpty ? rank.toUpperCase()[0] : 'U', 
                   style: TextStyle(
                     color: rankColor,
                     fontSize: 9,
@@ -316,7 +316,7 @@ class _ProfileHeroCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Text(
+                    const Text(
                       'Rank: ',
                       style: TextStyle(
                           color: AppColors.textSecondary, fontSize: 12),
@@ -356,12 +356,12 @@ class _ProfileHeroCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(colors: [
                                   rankColor,
-                                  rankColor.withOpacity(0.6),
+                                  rankColor.withValues(alpha: 0.6),
                                 ]),
                                 borderRadius: BorderRadius.circular(3),
                                 boxShadow: [
                                   BoxShadow(
-                                      color: rankColor.withOpacity(0.6),
+                                      color: rankColor.withValues(alpha: 0.6),
                                       blurRadius: 6),
                                 ],
                               ),
@@ -435,10 +435,10 @@ class _StatCardState extends State<_StatCard>
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: widget.color.withOpacity(0.2), width: 0.5),
+            color: widget.color.withValues(alpha: 0.2), width: 0.5),
         boxShadow: [
           BoxShadow(
-              color: widget.color.withOpacity(0.08), blurRadius: 12),
+              color: widget.color.withValues(alpha: 0.08), blurRadius: 12),
         ],
       ),
       child: Column(
@@ -449,11 +449,11 @@ class _StatCardState extends State<_StatCard>
             width: 36, height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: widget.color.withOpacity(0.1),
+              color: widget.color.withValues(alpha: 0.1),
               border: Border.all(
-                  color: widget.color.withOpacity(0.5), width: 1.5),
+                  color: widget.color.withValues(alpha: 0.5), width: 1.5),
               boxShadow: [BoxShadow(
-                  color: widget.color.withOpacity(0.3), blurRadius: 8)],
+                  color: widget.color.withValues(alpha: 0.3), blurRadius: 8)],
             ),
             child: Icon(widget.icon, color: widget.color, size: 16),
           ),
@@ -510,16 +510,16 @@ class _MatchHistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
       ),
       child: Row(
         children: [
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+              border: Border.all(color: color.withValues(alpha: 0.4), width: 0.5),
             ),
             child: Icon(
                 match.isWin ? Icons.check_rounded : Icons.close_rounded,
@@ -563,6 +563,8 @@ class _MatchHistoryCard extends StatelessWidget {
 }
 
 class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -576,7 +578,7 @@ class _EmptyHistory extends StatelessWidget {
       child: Column(
         children: [
           Icon(Icons.history_rounded,
-              color: AppColors.textMuted.withOpacity(0.4), size: 36),
+              color: AppColors.textMuted.withValues(alpha: 0.4), size: 36),
           const SizedBox(height: 12),
           const Text('No match history yet.',
               style: TextStyle(

@@ -27,7 +27,7 @@ class ShopController extends StateNotifier<AsyncValue<void>> {
     if (_userId == null) return;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repository.purchaseItem(
-      userId: _userId!,
+      userId: _userId,
       cost: ShopService.oneOptionLifelineCost,
       oneOptionLifelinesInc: 1,
     ));
@@ -37,7 +37,7 @@ class ShopController extends StateNotifier<AsyncValue<void>> {
     if (_userId == null) return;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repository.purchaseItem(
-      userId: _userId!,
+      userId: _userId,
       cost: ShopService.twoOptionLifelineCost,
       twoOptionLifelinesInc: 1,
     ));
@@ -47,21 +47,23 @@ class ShopController extends StateNotifier<AsyncValue<void>> {
     if (_userId == null) return;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repository.purchaseItem(
-      userId: _userId!,
+      userId: _userId,
       cost: cost,
       rankProtectionMatchesInc: matches,
     ));
   }
 
   Future<void> activateRankProtection() async {
-    if (_userId == null) return;
+    final uid = _userId;
+    if (uid == null) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repository.setRankProtectionActive(_userId!, true));
+    state = await AsyncValue.guard(() => _repository.setRankProtectionActive(uid, true));
   }
 
   Future<void> toggleRankProtection(bool active) async {
-    if (_userId == null) return;
+    final uid = _userId;
+    if (uid == null) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repository.setRankProtectionActive(_userId!, active));
+    state = await AsyncValue.guard(() => _repository.setRankProtectionActive(uid, active));
   }
 }

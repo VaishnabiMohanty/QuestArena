@@ -1,19 +1,16 @@
-// WHAT THIS FILE DOES:
-// Displays the global rankings with an interactive expandable profile card system.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:questarena/core/constants/colors.dart';
-import 'package:questarena/core/constants/text_styles.dart';
-import 'package:questarena/data/models/leaderboard_model.dart';
-import 'package:questarena/data/models/user_model.dart';
-import 'package:questarena/providers/leaderboard_providers.dart';
-import 'package:questarena/providers/user_providers.dart';
-import 'package:questarena/providers/navigation_providers.dart';
-import 'package:questarena/core/utils/rank_system.dart';
-import 'package:questarena/ui/widgets/smart_avatar.dart';
+import '../../../core/constants/colors.dart';
+import '../../../core/constants/text_styles.dart';
+import '../../../data/models/leaderboard_model.dart';
+import '../../../data/models/user_model.dart';
+import '../../../providers/leaderboard_providers.dart';
+import '../../../providers/user_providers.dart';
+import '../../../providers/navigation_providers.dart';
+import '../../../core/utils/rank_system.dart';
+import '../../widgets/bordered_avatar.dart';
 
 class LeaderboardTab extends ConsumerStatefulWidget {
   const LeaderboardTab({super.key});
@@ -102,7 +99,7 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
           ),
 
           Expanded(
-            child: _isGlobal 
+            child: _isGlobal
               ? _buildLeaderboard(leaderboardAsync, currentUser)
               : _buildFriendsLeaderboard(friendsAsync, currentUser),
           ),
@@ -127,7 +124,7 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                   child: _TopPlayerCard(player: topPlayer),
                 ),
               ),
-            
+
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -182,6 +179,9 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
             losses: currentUser.losses,
             draws: currentUser.draws,
             currentWinStreak: currentUser.currentWinStreak,
+            averageAccuracy: currentUser.averageAccuracy,
+            eloRating: currentUser.eloRating,
+            selectedBorder: currentUser.selectedBorder,
           ));
         }
         list.addAll(friends);
@@ -291,7 +291,6 @@ class _ExpandablePlayerCard extends ConsumerWidget {
                     child: _RankBadge(index: index),
                   ),
 
-                  // Restored premium glow around avatar when expanded
                   Stack(
                     alignment: Alignment.center,
                     children: [
@@ -310,10 +309,10 @@ class _ExpandablePlayerCard extends ConsumerWidget {
                             ],
                           ),
                         ).animate().scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1), duration: 400.ms),
-                      SmartAvatar(
+                      BorderedAvatar(
                         avatarUrl: player.avatarUrl,
+                        borderId: player.selectedBorder,
                         size: isExpanded ? 65 : 45,
-                        showBorder: isExpanded,
                         showGlow: false,
                       ),
                     ],
@@ -341,7 +340,6 @@ class _ExpandablePlayerCard extends ConsumerWidget {
                             color: AppColors.textMuted,
                           ),
                         ),
-                        // Restored "Add Friend" button below the rank/level line
                         if (isExpanded) ...[
                           const SizedBox(height: 12),
                           _ActionButton(uid: player.uid, isMe: isMe),
@@ -537,15 +535,15 @@ class _ActionButton extends ConsumerWidget {
     final friendsAsync = ref.watch(friendsProvider);
     final List<LeaderboardModel> friends = friendsAsync.value ?? [];
     final bool isFriend = friends.any((LeaderboardModel f) => f.uid == uid);
-    
+
     final incomingRequests = ref.watch(incomingRequestsProvider).value ?? [];
     final receivedRequest = incomingRequests.where(
-      (r) => (r.data() as Map<String, dynamic>)['senderUid'] == uid
+      (r) => r.data()['senderUid'] == uid
     ).firstOrNull;
-    
+
     final outgoingRequests = ref.watch(outgoingRequestsProvider).value ?? [];
     final sentRequest = outgoingRequests.any(
-      (r) => (r.data() as Map<String, dynamic>)['receiverUid'] == uid
+      (r) => r.data()['receiverUid'] == uid
     );
 
     String label = '+ Add Friend';
@@ -568,7 +566,7 @@ class _ActionButton extends ConsumerWidget {
       onPressed = () async {
         final currentUser = ref.read(currentUserProvider).value;
         if (currentUser == null) return;
-        
+
         final playerDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
         if (!playerDoc.exists) return;
         final playerData = playerDoc.data()!;
@@ -701,7 +699,7 @@ class _RankBadge extends StatelessWidget {
     if (index == 0) return const Icon(Icons.workspace_premium, color: AppColors.gold, size: 28);
     if (index == 1) return const Icon(Icons.workspace_premium, color: AppColors.rankSilver, size: 24);
     if (index == 2) return const Icon(Icons.workspace_premium, color: AppColors.rankBronze, size: 24);
-    
+
     return Text(
       '${index + 1}',
       style: AppTextStyles.headline.copyWith(fontSize: 18, color: AppColors.textMuted),
@@ -734,7 +732,6 @@ class _TopPlayerCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Ambient Sparkles / Confetti
           ...List.generate(12, (index) {
             final double top = (index * 45) % 150.0 + 20;
             final double left = (index * 65) % 300.0 + 10;
@@ -757,7 +754,6 @@ class _TopPlayerCard extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                // Badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
@@ -771,10 +767,10 @@ class _TopPlayerCard extends StatelessWidget {
                       const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 14),
                       const SizedBox(width: 6),
                       Text(
-                        'TOP PLAYER', 
+                        'TOP PLAYER',
                         style: AppTextStyles.label.copyWith(
-                          color: AppColors.gold, 
-                          fontSize: 10, 
+                          color: AppColors.gold,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.5,
                         ),
@@ -785,11 +781,9 @@ class _TopPlayerCard extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // Profile Image with RESTORED circular radial glow
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Circular Radial Glow
                     Container(
                       width: 110,
                       height: 110,
@@ -806,16 +800,16 @@ class _TopPlayerCard extends StatelessWidget {
                       ),
                     ).animate(onPlay: (c) => c.repeat(reverse: true))
                      .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 2.seconds),
-                    
-                    SmartAvatar(
+
+                    BorderedAvatar(
                       avatarUrl: player.avatarUrl,
+                      borderId: player.selectedBorder,
                       size: 85,
-                      showBorder: true,
                       showGlow: false,
                     ),
-                    Positioned(
+                    const Positioned(
                       top: -5,
-                      child: const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 24),
+                      child: Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 24),
                     ),
                   ],
                 ),
@@ -830,7 +824,6 @@ class _TopPlayerCard extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // Stats Row (Previous version layout)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -840,23 +833,6 @@ class _TopPlayerCard extends StatelessWidget {
                   ],
                 ),
               ],
-            ),
-          ),
-
-          // Vignette effect
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.2),
-                    ],
-                    stops: const [0.7, 1.0],
-                  ),
-                ),
-              ),
             ),
           ),
         ],

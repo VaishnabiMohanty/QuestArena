@@ -147,6 +147,7 @@ class VictoryCard extends StatelessWidget {
                   // Avatar
                   SmartAvatar(
                     avatarUrl: avatarUrl,
+                    rank: rank,
                     size: 90,
                     showGlow: true,
                     showBorder: true,
@@ -298,6 +299,7 @@ class VictoryCard extends StatelessWidget {
         children: [
           SmartAvatar(
             avatarUrl: avatarUrl,
+            rank: rank,
             size: 40,
             showBorder: false,
           ),

@@ -5,7 +5,6 @@ import '../../core/constants/text_styles.dart';
 import '../../providers/user_providers.dart';
 import '../../providers/shop_provider.dart';
 import '../../data/services/shop_service.dart';
-import 'matchmaking_screen.dart';
 
 class StoreScreen extends ConsumerWidget {
   const StoreScreen({super.key});

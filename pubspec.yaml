@@ -29,6 +29,7 @@ dependencies:
   # Networking & Images
   dio: ^5.4.0
   cached_network_image: ^3.3.0
+  image_picker: ^1.0.7
 
   # UI & Animations
   flutter_animate: ^4.5.0
@@ -40,6 +41,7 @@ dependencies:
   font_awesome_flutter: ^10.6.0
   screenshot: ^3.0.0
   share_plus: ^13.2.0
+  url_launcher: ^6.2.5
   path_provider: ^2.1.6
   confetti: ^0.8.0
 

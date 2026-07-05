@@ -104,6 +104,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                         children: [
                           SmartAvatar(
                             avatarUrl: p1['avatarUrl'],
+                            rank: p1['rank'],
                             size: 120,
                             showGlow: true,
                             showBorder: true,
@@ -180,6 +181,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                               const SizedBox(height: 16),
                               SmartAvatar(
                                 avatarUrl: p2['avatarUrl'],
+                                rank: p2['rank'],
                                 size: 120,
                                 showGlow: true,
                                 showBorder: true,

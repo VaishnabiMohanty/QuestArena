@@ -1,7 +1,3 @@
-// WHAT THIS FILE DOES:
-// Highly polished Animated UI for matchmaking with dynamic search status and ELO range.
-// Uses a radar-inspired design to maintain a high-tech "Gaming" feel.
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,8 +23,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
   int _secondsElapsed = 0;
   bool _opponentFound = false;
   bool _isTimedOut = false;
-  
-  // MATCHMAKING TIMEOUT (25 seconds before showing failure)
+
   static const int _timeoutLimit = 25;
 
   @override
@@ -78,7 +73,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
       _opponentFound = false;
     });
 
-    // Re-trigger matchmaking using the existing logic (the ticket should already have the correct info)
     final ticket = ref.read(matchmakingTicketProvider).value;
     if (ticket != null) {
       await ref.read(matchmakingRepositoryProvider).startSearching(ticket);
@@ -109,30 +103,27 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
     if (lowerCategory.contains('animals')) return '🐾';
     if (lowerCategory.contains('video games')) return '🎮';
     if (lowerCategory.contains('general knowledge')) return '📖';
-    return '🎲'; // Mixed / Random
+    return '🎲';
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider).value;
     final ticket = ref.watch(matchmakingTicketProvider).value;
-
     final displayCategory = ticket?.categoryName ?? widget.categoryName ?? 'Mixed / Random';
 
-    // Navigation logic: Listen for the ticket to become 'matched'
     ref.listen(matchmakingTicketProvider, (previous, next) {
       final ticket = next.value;
       if (ticket != null && ticket.status == 'matched' && ticket.gameRoomId != null) {
         if (_opponentFound) return;
-        
+
         _searchTimer?.cancel();
         _expansionTimer?.cancel();
-        
+
         setState(() {
           _opponentFound = true;
         });
 
-        // Delay briefly to show "Opponent Found!"
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (context.mounted) {
             Navigator.of(context).pushReplacement(
@@ -147,7 +138,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
       backgroundColor: AppColors.bgBase,
       body: Stack(
         children: [
-          // 1. Cyberpunk-themed background
           Container(
             decoration: const BoxDecoration(
               color: AppColors.bgDeep,
@@ -159,30 +149,27 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
             ),
           ),
 
-          if (!_isTimedOut) 
+          if (!_isTimedOut)
             _buildSearchUI(user, displayCategory)
-          else 
-            _buildTimeoutUI(user),
+          else
+            _buildTimeoutUI(),
         ],
       ),
     );
   }
 
-  Widget _buildSearchUI(user, String displayCategory) {
+  Widget _buildSearchUI(dynamic user, String displayCategory) {
     final userElo = user?.eloRating ?? 1200;
-    // Calculate expansion stage (0-4)
     final stage = (_secondsElapsed / 5).floor().clamp(0, 4);
     final range = 100 + (stage * 100);
-    
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Animated Radar Rings & Avatar
           Stack(
             alignment: Alignment.center,
             children: [
-              // Sonar Rings (only show if opponent not found yet)
               if (!_opponentFound)
                 ...List.generate(4, (index) {
                   return Container(
@@ -207,7 +194,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
                   .fadeOut();
                 }),
 
-              // Rotating Radar Sweep
               if (!_opponentFound)
                 RepaintBoundary(
                   child: Container(
@@ -229,7 +215,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
                   .rotate(duration: 4.seconds),
                 ),
 
-              // Player Avatar with pulse
               SmartAvatar(
                 avatarUrl: user?.avatarUrl,
                 size: 110,
@@ -239,26 +224,24 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
                .shimmer(delay: 2.seconds, duration: 2.seconds, color: AppColors.neonViolet.withValues(alpha: 0.3)),
             ],
           ),
-          
+
           const SizedBox(height: 48),
 
-          // Dynamic Status Text
           Text(
             _getStatusMessage().toUpperCase(),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16, 
-              letterSpacing: 2, 
-              fontWeight: FontWeight.w900, 
+              fontSize: 16,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w900,
               color: _opponentFound ? AppColors.teal : AppColors.textPrimary
             ),
           ).animate(key: ValueKey(_getStatusMessage()))
            .fadeIn(duration: 400.ms)
            .slideY(begin: 0.2, end: 0),
-          
+
           const SizedBox(height: 16),
-          
-          // Rank & ELO Indicator
+
           Column(
             children: [
               Container(
@@ -287,7 +270,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
 
           const SizedBox(height: 32),
 
-          // Dynamic ELO Range Display
           if (!_opponentFound) ...[
             Text(
               'CURRENT SEARCH RANGE',
@@ -302,10 +284,9 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
                 fontWeight: FontWeight.bold,
               ),
             ).animate(key: ValueKey(range)).scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), curve: Curves.elasticOut),
-            
+
             const SizedBox(height: 32),
-            
-            // Progress Bar
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 60),
               child: ClipRRect(
@@ -322,7 +303,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
 
           const SizedBox(height: 40),
 
-          // MATCH TOPIC
           if (displayCategory.isNotEmpty) ...[
             Text(
               'MATCH TOPIC',
@@ -350,7 +330,6 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
             ),
           ],
 
-          // Cancel Button
           if (!_opponentFound)
             Padding(
               padding: const EdgeInsets.only(top: 48),
@@ -358,7 +337,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
                 onPressed: () async {
                   if (user != null) {
                     await ref.read(matchmakingRepositoryProvider).cancelSearching(user.uid);
-                    if (context.mounted) Navigator.pop(context);
+                    if (mounted) Navigator.pop(context);
                   }
                 },
                 icon: const Icon(Icons.close_rounded, color: AppColors.neonPink, size: 20),
@@ -373,7 +352,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Tick
     );
   }
 
-  Widget _buildTimeoutUI(user) {
+  Widget _buildTimeoutUI() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),

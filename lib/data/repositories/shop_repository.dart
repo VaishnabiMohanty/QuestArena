@@ -23,7 +23,6 @@ class ShopRepository {
 
       final userData = snapshot.data()!;
       final currentCoins = userData['coins'] ?? 0;
-      final currentShieldMatches = userData['rankProtectionMatches'] ?? 0;
 
       if (currentCoins < cost) {
         throw Exception('Insufficient coins');

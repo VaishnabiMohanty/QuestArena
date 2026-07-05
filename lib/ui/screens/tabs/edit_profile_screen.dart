@@ -151,13 +151,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.gold,
-                    foregroundColor: Colors.black,
+                    backgroundColor: AppColors.purple,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 8,
+                    shadowColor: AppColors.purple.withValues(alpha: 0.4),
                   ),
                   child: _isSaving
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Text('SAVE PROFILE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.5)),
                 ),
               ),

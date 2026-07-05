@@ -1,9 +1,7 @@
-// WHAT THIS FILE DOES:
 // Screen for first-time users to set up their profile.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/text_styles.dart';
 import '../../providers/auth_providers.dart';
@@ -21,15 +19,7 @@ class CreateProfileScreen extends ConsumerStatefulWidget {
 
 class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
   final _usernameController = TextEditingController();
-  String _selectedAvatar = 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix';
   bool _isLoading = false;
-
-  final List<String> _avatars = [
-    'https://api.dicebear.com/7.x/avataaars/png?seed=Felix',
-    'https://api.dicebear.com/7.x/avataaars/png?seed=Aneka',
-    'https://api.dicebear.com/7.x/avataaars/png?seed=Buddy',
-    'https://api.dicebear.com/7.x/avataaars/png?seed=Max',
-  ];
 
   Future<void> _saveProfile() async {
     final username = _usernameController.text.trim();
@@ -48,7 +38,8 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
         uid: currentUser.uid,
         email: currentUser.email ?? '',
         username: username,
-        avatarUrl: _selectedAvatar,
+        avatarUrl: null, // Initial avatar is null, rank will determine it
+        unlockedAvatars: [],
       );
 
       final result = await ref.read(userRepositoryProvider).createUserProfile(newUser);
@@ -81,45 +72,8 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
                 children: [
                   Text('Initialize Profile', style: AppTextStyles.headline),
                   const SizedBox(height: 8),
-                  Text('Choose your warrior name and avatar',
+                  Text('Choose your warrior name to enter the arena',
                       style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary)),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _avatars.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 16),
-                      itemBuilder: (context, index) {
-                        final isSelected = _selectedAvatar == _avatars[index];
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedAvatar = _avatars[index]),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: isSelected ? AppColors.gold : Colors.transparent, width: 3),
-                            ),
-                            child: CircleAvatar(
-                            radius: 40, 
-                            backgroundColor: AppColors.surface,
-                            child: ClipOval(
-                              child: CachedNetworkImage(
-                                imageUrl: _avatars[index],
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => const CircularProgressIndicator(strokeWidth: 2),
-                                errorWidget: (context, url, error) => const Icon(Icons.person),
-                              ),
-                            ),
-                          ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
                   const SizedBox(height: 32),
                   CustomTextField(
                     controller: _usernameController,

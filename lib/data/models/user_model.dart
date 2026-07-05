@@ -17,8 +17,25 @@ class UserModel {
   final int eloRating;
   final int currentWinStreak;
   final int highestWinStreak;
-  final DateTime? lastDailyBonusDate;
   final List<String> achievements;
+  final List<String> unlockedAvatars;
+  final List<String> unlockedBorders;
+  final String? selectedBorder;
+  final int weeklyMatchesPlayed;
+  final DateTime? lastWeeklyRewardDate;
+  final String? weeklyLeague;
+  final Map<String, int> powerUps;
+
+  // Coin & Streak System Fields
+  final int todayCoinsEarned;
+  final DateTime lastCoinResetDate;
+  final DateTime lastDailyLoginRewardDate;
+  final int loginStreak;
+  final DateTime lastLoginDate;
+  final String? lastRewardedMatchId;
+  final String? lastLeagueRewardClaimed; // e.g., 'Gold_Season_1'
+
+  // Additional stats
   final int arenaBreakerWins;
   final int arenaBreakerLosses;
   final double averageAccuracy;
@@ -27,6 +44,7 @@ class UserModel {
   final int rankProtectionMatches;
   final bool rankProtectionActive;
   final int ownedShieldPackage;
+  final DateTime? lastDailyBonusDate;
 
   UserModel({
     required this.uid,
@@ -45,8 +63,21 @@ class UserModel {
     this.eloRating = 1200,
     this.currentWinStreak = 0,
     this.highestWinStreak = 0,
-    this.lastDailyBonusDate,
     this.achievements = const [],
+    this.unlockedAvatars = const [],
+    this.unlockedBorders = const [],
+    this.selectedBorder,
+    this.weeklyMatchesPlayed = 0,
+    this.lastWeeklyRewardDate,
+    this.weeklyLeague,
+    this.powerUps = const {'fiftyFifty': 5, 'timeFreeze': 5},
+    this.todayCoinsEarned = 0,
+    DateTime? lastCoinResetDate,
+    DateTime? lastDailyLoginRewardDate,
+    this.loginStreak = 0,
+    DateTime? lastLoginDate,
+    this.lastRewardedMatchId,
+    this.lastLeagueRewardClaimed,
     this.arenaBreakerWins = 0,
     this.arenaBreakerLosses = 0,
     this.averageAccuracy = 0.0,
@@ -55,9 +86,12 @@ class UserModel {
     this.rankProtectionMatches = 0,
     this.rankProtectionActive = false,
     this.ownedShieldPackage = 0,
-  });
+    this.lastDailyBonusDate,
+  })  : lastCoinResetDate = lastCoinResetDate ?? DateTime(2000),
+        lastDailyLoginRewardDate = lastDailyLoginRewardDate ?? DateTime(2000),
+        lastLoginDate = lastLoginDate ?? DateTime(2000);
 
-  // Calculated getters (Single source of truth)
+  // Calculated getters
   int get matchesPlayed => wins + losses + draws;
 
   double get winRate {
@@ -73,6 +107,14 @@ class UserModel {
       subRankVal = 3;
     }
 
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return null;
+    }
+
     return UserModel(
       uid: json['uid'] ?? '',
       username: json['username'] ?? '',
@@ -84,19 +126,27 @@ class UserModel {
       rank: rankVal,
       subRank: subRankVal,
       rankPoints: json['rankPoints'] ?? 0,
-      // Handle legacy naming
       wins: json['wins'] ?? json['totalWins'] ?? 0,
       losses: json['losses'] ?? json['totalLosses'] ?? 0,
       draws: json['draws'] ?? json['totalDraws'] ?? 0,
       eloRating: json['eloRating'] ?? 1200,
       currentWinStreak: json['currentWinStreak'] ?? json['currentStreak'] ?? 0,
       highestWinStreak: json['highestWinStreak'] ?? 0,
-      lastDailyBonusDate: json['lastDailyBonusDate'] != null
-          ? (json['lastDailyBonusDate'] is Timestamp
-              ? (json['lastDailyBonusDate'] as Timestamp).toDate()
-              : DateTime.tryParse(json['lastDailyBonusDate'].toString()))
-          : null,
       achievements: List<String>.from(json['achievements'] ?? []),
+      unlockedAvatars: List<String>.from(json['unlockedAvatars'] ?? []),
+      unlockedBorders: List<String>.from(json['unlockedBorders'] ?? []),
+      selectedBorder: json['selectedBorder'],
+      weeklyMatchesPlayed: json['weeklyMatchesPlayed'] ?? 0,
+      lastWeeklyRewardDate: parseDate(json['lastWeeklyRewardDate']),
+      weeklyLeague: json['weeklyLeague'],
+      powerUps: Map<String, int>.from(json['powerUps'] ?? {'fiftyFifty': 5, 'timeFreeze': 5}),
+      todayCoinsEarned: json['todayCoinsEarned'] ?? 0,
+      lastCoinResetDate: parseDate(json['lastCoinResetDate']),
+      lastDailyLoginRewardDate: parseDate(json['lastDailyLoginRewardDate']),
+      loginStreak: json['loginStreak'] ?? 0,
+      lastLoginDate: parseDate(json['lastLoginDate']),
+      lastRewardedMatchId: json['lastRewardedMatchId'],
+      lastLeagueRewardClaimed: json['lastLeagueRewardClaimed'],
       arenaBreakerWins: json['arenaBreakerWins'] ?? 0,
       arenaBreakerLosses: json['arenaBreakerLosses'] ?? 0,
       averageAccuracy: (json['averageAccuracy'] ?? 0.0).toDouble(),
@@ -105,6 +155,7 @@ class UserModel {
       rankProtectionMatches: json['rankProtectionMatches'] ?? 0,
       rankProtectionActive: json['rankProtectionActive'] ?? false,
       ownedShieldPackage: json['ownedShieldPackage'] ?? 0,
+      lastDailyBonusDate: parseDate(json['lastDailyBonusDate']),
     );
   }
 
@@ -122,14 +173,24 @@ class UserModel {
         'wins': wins,
         'losses': losses,
         'draws': draws,
-        'matchesPlayed': matchesPlayed,
         'eloRating': eloRating,
         'currentWinStreak': currentWinStreak,
         'highestWinStreak': highestWinStreak,
-        'lastDailyBonusDate': lastDailyBonusDate != null
-            ? Timestamp.fromDate(lastDailyBonusDate!)
-            : null,
         'achievements': achievements,
+        'unlockedAvatars': unlockedAvatars,
+        'unlockedBorders': unlockedBorders,
+        'selectedBorder': selectedBorder,
+        'weeklyMatchesPlayed': weeklyMatchesPlayed,
+        'lastWeeklyRewardDate': lastWeeklyRewardDate != null ? Timestamp.fromDate(lastWeeklyRewardDate!) : null,
+        'weeklyLeague': weeklyLeague,
+        'powerUps': powerUps,
+        'todayCoinsEarned': todayCoinsEarned,
+        'lastCoinResetDate': Timestamp.fromDate(lastCoinResetDate),
+        'lastDailyLoginRewardDate': Timestamp.fromDate(lastDailyLoginRewardDate),
+        'loginStreak': loginStreak,
+        'lastLoginDate': Timestamp.fromDate(lastLoginDate),
+        'lastRewardedMatchId': lastRewardedMatchId,
+        'lastLeagueRewardClaimed': lastLeagueRewardClaimed,
         'arenaBreakerWins': arenaBreakerWins,
         'arenaBreakerLosses': arenaBreakerLosses,
         'averageAccuracy': averageAccuracy,
@@ -138,6 +199,8 @@ class UserModel {
         'rankProtectionMatches': rankProtectionMatches,
         'rankProtectionActive': rankProtectionActive,
         'ownedShieldPackage': ownedShieldPackage,
+        'lastDailyBonusDate': lastDailyBonusDate != null ? Timestamp.fromDate(lastDailyBonusDate!) : null,
+        'matchesPlayed': matchesPlayed,
       };
 
   UserModel copyWith({
@@ -146,6 +209,15 @@ class UserModel {
     int? level,
     int? xp,
     int? coins,
+    int? todayCoinsEarned,
+    DateTime? lastCoinResetDate,
+    DateTime? lastDailyLoginRewardDate,
+    int? loginStreak,
+    DateTime? lastLoginDate,
+    int? currentWinStreak,
+    int? highestWinStreak,
+    String? lastRewardedMatchId,
+    String? lastLeagueRewardClaimed,
     String? rank,
     int? subRank,
     int? rankPoints,
@@ -153,10 +225,15 @@ class UserModel {
     int? losses,
     int? draws,
     int? eloRating,
-    int? currentWinStreak,
-    int? highestWinStreak,
     DateTime? lastDailyBonusDate,
     List<String>? achievements,
+    List<String>? unlockedAvatars,
+    List<String>? unlockedBorders,
+    String? selectedBorder,
+    int? weeklyMatchesPlayed,
+    DateTime? lastWeeklyRewardDate,
+    String? weeklyLeague,
+    Map<String, int>? powerUps,
     int? arenaBreakerWins,
     int? arenaBreakerLosses,
     double? averageAccuracy,
@@ -175,6 +252,15 @@ class UserModel {
       level: level ?? this.level,
       xp: xp ?? this.xp,
       coins: coins ?? this.coins,
+      todayCoinsEarned: todayCoinsEarned ?? this.todayCoinsEarned,
+      lastCoinResetDate: lastCoinResetDate ?? this.lastCoinResetDate,
+      lastDailyLoginRewardDate: lastDailyLoginRewardDate ?? this.lastDailyLoginRewardDate,
+      loginStreak: loginStreak ?? this.loginStreak,
+      lastLoginDate: lastLoginDate ?? this.lastLoginDate,
+      currentWinStreak: currentWinStreak ?? this.currentWinStreak,
+      highestWinStreak: highestWinStreak ?? this.highestWinStreak,
+      lastRewardedMatchId: lastRewardedMatchId ?? this.lastRewardedMatchId,
+      lastLeagueRewardClaimed: lastLeagueRewardClaimed ?? this.lastLeagueRewardClaimed,
       rank: rank ?? this.rank,
       subRank: clearSubRank ? null : (subRank ?? this.subRank),
       rankPoints: rankPoints ?? this.rankPoints,
@@ -182,17 +268,21 @@ class UserModel {
       losses: losses ?? this.losses,
       draws: draws ?? this.draws,
       eloRating: eloRating ?? this.eloRating,
-      currentWinStreak: currentWinStreak ?? this.currentWinStreak,
-      highestWinStreak: highestWinStreak ?? this.highestWinStreak,
       lastDailyBonusDate: lastDailyBonusDate ?? this.lastDailyBonusDate,
       achievements: achievements ?? this.achievements,
+      unlockedAvatars: unlockedAvatars ?? this.unlockedAvatars,
+      unlockedBorders: unlockedBorders ?? this.unlockedBorders,
+      selectedBorder: selectedBorder ?? this.selectedBorder,
+      weeklyMatchesPlayed: weeklyMatchesPlayed ?? this.weeklyMatchesPlayed,
+      lastWeeklyRewardDate: lastWeeklyRewardDate ?? this.lastWeeklyRewardDate,
+      weeklyLeague: weeklyLeague ?? this.weeklyLeague,
+      powerUps: powerUps ?? this.powerUps,
       arenaBreakerWins: arenaBreakerWins ?? this.arenaBreakerWins,
       arenaBreakerLosses: arenaBreakerLosses ?? this.arenaBreakerLosses,
       averageAccuracy: averageAccuracy ?? this.averageAccuracy,
       oneOptionLifelines: oneOptionLifelines ?? this.oneOptionLifelines,
       twoOptionLifelines: twoOptionLifelines ?? this.twoOptionLifelines,
-      rankProtectionMatches:
-          rankProtectionMatches ?? this.rankProtectionMatches,
+      rankProtectionMatches: rankProtectionMatches ?? this.rankProtectionMatches,
       rankProtectionActive: rankProtectionActive ?? this.rankProtectionActive,
       ownedShieldPackage: ownedShieldPackage ?? this.ownedShieldPackage,
     );
