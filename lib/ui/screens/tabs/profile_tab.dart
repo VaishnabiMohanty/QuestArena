@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:questarena/core/constants/colors.dart';
+import 'package:questarena/core/constants/text_styles.dart';
+import 'package:questarena/core/utils/rank_system.dart';
+import 'package:questarena/providers/user_providers.dart';
+import 'package:questarena/providers/auth_providers.dart';
+import 'package:questarena/providers/leaderboard_providers.dart';
+import 'package:questarena/data/models/leaderboard_model.dart';
+import 'package:questarena/data/models/user_model.dart';
+import 'package:questarena/ui/widgets/neon_swirl_background.dart';
+import 'package:questarena/ui/widgets/smart_avatar.dart';
+import 'package:questarena/ui/widgets/expandable_player_card.dart';
+import 'package:questarena/ui/screens/tabs/edit_profile_screen.dart';
+import 'package:questarena/ui/screens/tabs/leaderboard_tab.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
@@ -19,6 +33,70 @@ class ProfileTab extends ConsumerStatefulWidget {
   @override
   ConsumerState<ProfileTab> createState() => _ProfileTabState();
 }
+
+class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _showDeleteConfirmation(BuildContext context, String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: Text('DELETE ACCOUNT?', style: AppTextStyles.headline.copyWith(color: AppColors.red)),
+        content: const Text('This action is permanent. All your data will be lost.', style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('CANCEL', style: AppTextStyles.label)),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref.read(userRepositoryProvider).deleteUserProfile(uid);
+              await ref.read(authRepositoryProvider).deleteAccount();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+            child: const Text('DELETE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportIssue() async {
+    final String subject = Uri.encodeComponent('QuestArena Bug Report');
+    final String body = Uri.encodeComponent('Hello, I would like to report an issue: ');
+    final Uri mailUri = Uri.parse('mailto:imaginati.appdev@gmail.com?subject=$subject&body=$body');
+
+    try {
+      if (!await launchUrl(mailUri, mode: LaunchMode.externalApplication)) {
+        throw 'Could not launch $mailUri';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to open email app. Please email imaginati.appdev@gmail.com directly.'),
+            backgroundColor: AppColors.neonPink,
+          ),
+        );
+      }
+    }
+  }
 
 class _ProfileTabState extends ConsumerState<ProfileTab> {
   @override
@@ -408,6 +486,135 @@ class _StreakRow extends StatelessWidget {
   });
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final requestsAsync = ref.watch(incomingRequestsProvider);
+    return requestsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+      data: (requests) {
+        if (requests.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 32),
+            const Text('FRIEND REQUESTS', style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2)),
+            const SizedBox(height: 16),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: requests.length,
+              itemBuilder: (context, index) {
+                final request = requests[index];
+                final data = request.data();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.surface),
+                  ),
+                  child: Row(
+                    children: [
+                      SmartAvatar(avatarUrl: data['senderAvatar'], size: 40),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(data['senderUsername'], style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
+                            Text('Sent you a request', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => _showConfirmDialog(context, ref, request.id, data, true),
+                            icon: const Icon(Icons.check_circle_rounded, color: AppColors.teal),
+                          ),
+                          IconButton(
+                            onPressed: () => _showConfirmDialog(context, ref, request.id, data, false),
+                            icon: const Icon(Icons.cancel_rounded, color: AppColors.red),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showConfirmDialog(BuildContext context, WidgetRef ref, String requestId, Map<String, dynamic> requestData, bool isAccept) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: Text(isAccept ? 'Accept Request?' : 'Decline Request?', style: AppTextStyles.headline.copyWith(fontSize: 18)),
+        content: Text('Are you sure you want to ${isAccept ? 'accept' : 'decline'} the friend request from ${requestData['senderUsername']}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              if (isAccept) {
+                ref.read(friendsRepositoryProvider).acceptFriendRequest(requestId, requestData);
+              } else {
+                ref.read(friendsRepositoryProvider).rejectFriendRequest(requestId);
+              }
+              Navigator.pop(context);
+            },
+            child: Text(isAccept ? 'Accept' : 'Decline', style: TextStyle(color: isAccept ? AppColors.teal : AppColors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendsListSection extends ConsumerWidget {
+  const _FriendsListSection();
+  void _showFriendProfile(BuildContext context, WidgetRef ref, LeaderboardModel friend) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    SmartAvatar(avatarUrl: friend.avatarUrl, size: 60),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(friend.username, style: AppTextStyles.headline.copyWith(fontSize: 20)),
+                          Text('LVL ${friend.level} • ${RankSystem.getRankName(friend.rank, friend.subRank)}',
+                            style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ExpandedDetails(uid: friend.uid, isMe: false),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('CLOSE', style: AppTextStyles.label.copyWith(color: AppColors.textSecondary)),
+                ),
+              ],
+            ),
   Widget build(BuildContext context) {
     return Row(
       children: [

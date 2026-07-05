@@ -5,6 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:questarena/providers/auth_providers.dart';
+import 'package:questarena/data/services/firestore_service.dart';
+import 'package:questarena/data/repositories/user_repository.dart';
+import 'package:questarena/data/repositories/friends_repository.dart';
+import 'package:questarena/data/models/user_model.dart';
+import 'package:questarena/data/models/match_history_model.dart';
+import 'package:questarena/data/models/leaderboard_model.dart';
+import 'package:questarena/core/errors/result.dart';
 import '../data/services/firestore_service.dart';
 import '../data/repositories/user_repository.dart';
 import '../data/repositories/friends_repository.dart';
@@ -60,12 +68,22 @@ final userMatchHistoryProvider = FutureProvider.family<List<MatchModel>, String>
   return repo.watchMatchHistory(uid).first;
 });
 
+// Real-time friends system providers
+final friendUidsProvider = StreamProvider.autoDispose<List<String>>((ref) {
 final friendsProvider = StreamProvider.autoDispose<List<LeaderboardModel>>((ref) {
   final authState = ref.watch(authStateProvider).value;
   if (authState == null) return Stream.value([]);
 
   final repo = ref.watch(friendsRepositoryProvider);
-  return repo.watchFriends(authState.uid);
+  return repo.watchFriendUids(authState.uid);
+});
+
+final friendsProvider = StreamProvider.autoDispose<List<LeaderboardModel>>((ref) {
+  final uids = ref.watch(friendUidsProvider).value ?? [];
+  if (uids.isEmpty) return Stream.value([]);
+  
+  final repo = ref.watch(friendsRepositoryProvider);
+  return repo.watchFriendsLive(uids);
 });
 
 final incomingRequestsProvider = StreamProvider.autoDispose<List<QueryDocumentSnapshot<Map<String, dynamic>>>>((ref) {

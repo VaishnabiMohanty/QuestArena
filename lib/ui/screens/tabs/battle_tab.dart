@@ -9,6 +9,9 @@ import '../../../data/models/matchmaking_model.dart';
 import '../matchmaking_screen.dart';
 import '../private_room_screen.dart';
 import '../../../features/practice/screens/practice_setup_screen.dart';
+import '../../../providers/guild_providers.dart';
+import '../guild/guild_home_screen.dart';
+import '../guild/guild_dialogs.dart';
 import '../../widgets/neon_swirl_background.dart';
 import '../../widgets/category_picker_sheet.dart';
 
@@ -88,6 +91,15 @@ class _BattleTabState extends ConsumerState<BattleTab> {
     }
   }
 
+  void _handleGuildsTap() {
+    final user = ref.read(currentUserProvider).value;
+    if (user?.guildId == null) {
+      showGuildOptionsDialog(context, ref);
+    } else {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const GuildHomeScreen()));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider).value;
@@ -163,6 +175,16 @@ class _BattleTabState extends ConsumerState<BattleTab> {
                   onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const PracticeSetupScreen()));
                   },
+                ),
+
+                const SizedBox(height: 16),
+
+                _BattleModeCard(
+                  title: 'GUILDS',
+                  subtitle: 'Team up and battle',
+                  icon: Icons.groups_rounded,
+                  color: AppColors.neonPink,
+                  onTap: _handleGuildsTap,
                 ),
               ],
             ),

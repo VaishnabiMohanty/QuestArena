@@ -34,6 +34,7 @@ class GameRoomModel {
   // Disconnect & Forfeit Fields
   final Map<String, dynamic> presence;
   final String? forfeitWinnerId;
+  final String? guildBattleId;
 
   GameRoomModel({
     required this.roomId,
@@ -62,6 +63,7 @@ class GameRoomModel {
     this.arenaBreakerStatusMessage,
     this.presence = const {},
     this.forfeitWinnerId,
+    this.guildBattleId,
   });
 
   factory GameRoomModel.fromJson(Map<String, dynamic> json) {
@@ -102,6 +104,7 @@ class GameRoomModel {
       arenaBreakerStatusMessage: json['arenaBreakerStatusMessage'],
       presence: Map<String, dynamic>.from(json['presence'] ?? {}),
       forfeitWinnerId: json['forfeitWinnerId'],
+      guildBattleId: json['guildBattleId'],
     );
   }
 
@@ -132,6 +135,7 @@ class GameRoomModel {
     'arenaBreakerStatusMessage': arenaBreakerStatusMessage,
     'presence': presence,
     'forfeitWinnerId': forfeitWinnerId,
+    'guildBattleId': guildBattleId,
   };
 
   GameRoomModel copyWith({
@@ -148,6 +152,7 @@ class GameRoomModel {
     Map<String, dynamic>? arenaBreakerSubmissions,
     bool? isArenaBreakerWin,
     Map<String, dynamic>? powerups,
+    String? guildBattleId,
     String? player1Emoji,
     String? player2Emoji,
     List<String>? rematchRequests,

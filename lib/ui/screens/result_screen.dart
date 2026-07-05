@@ -13,6 +13,7 @@ import '../../core/constants/text_styles.dart';
 import '../../providers/user_providers.dart';
 import '../../providers/game_providers.dart';
 import '../../providers/leaderboard_providers.dart';
+import '../../providers/guild_providers.dart';
 import '../../providers/streak_providers.dart';
 import '../../providers/achievement_providers.dart';
 import '../../data/models/game_room_model.dart';
@@ -98,6 +99,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           : widget.room.player2;
 
       final myScore = myData?['score'] ?? 0;
+      final rankProtectionActive = myData?['rankProtectionActive'] ?? false;
+
+      // Guild Battle Score Update
+      if (widget.room.guildBattleId != null) {
+        ref.read(guildRepositoryProvider).updatePlayerScore(widget.room.guildBattleId!, currentUser.uid, myScore);
+      }
       final bool rankProtectionActive = myData?['rankProtectionActive'] ?? false;
       
       final correctAnswers = myScore ~/ 10;
@@ -661,6 +668,7 @@ class _VictoryCardModalState extends State<_VictoryCardModal> {
           ),
         ),
         delay: const Duration(milliseconds: 100),
+        pixelRatio: 3.0,
         context: context,
       );
 
@@ -670,6 +678,9 @@ class _VictoryCardModalState extends State<_VictoryCardModal> {
 
       const shareMessage = "I just won a battle on QuestArena!🏆\n\nThink you can beat me? 🧠\nChallenge me and prove it.\n\n🎮 Play now:\nhttps://quest-arena-self.vercel.app/";
 
+      await Share.shareXFiles(
+        [XFile(imagePath.path)],
+        text: shareMessage,
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(imagePath.path)],
@@ -677,6 +688,11 @@ class _VictoryCardModalState extends State<_VictoryCardModal> {
         ),
       );
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share victory card: $e'), backgroundColor: AppColors.red),
+        );
+      }
       debugPrint('Share Error: $e');
     }
   }

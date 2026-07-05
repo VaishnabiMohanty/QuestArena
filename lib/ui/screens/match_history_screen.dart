@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/text_styles.dart';
 import '../../providers/user_providers.dart';
@@ -35,67 +36,124 @@ class MatchHistoryScreen extends ConsumerWidget {
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               itemCount: history.length,
               itemBuilder: (context, index) {
                 final match = history[index];
                 final isWin = match.playerScore > match.opponentScore;
                 final isDraw = match.playerScore == match.opponentScore;
+                
+                final Color accentColor = isWin 
+                    ? AppColors.teal 
+                    : (isDraw ? AppColors.gold : AppColors.red);
+                
+                final String statusText = isWin ? 'VICTORY' : (isDraw ? 'DRAW' : 'DEFEAT');
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.cardBg.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isWin ? AppColors.teal.withValues(alpha: 0.3) : AppColors.surface,
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 0.5,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      SmartAvatar(
-                        avatarUrl: match.opponentAvatarUrl,
-                        size: 50,
-                        showBorder: true,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              match.opponentName,
-                              style: AppTextStyles.headline.copyWith(fontSize: 16),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              isWin ? 'VICTORY' : (isDraw ? 'DRAW' : 'DEFEAT'),
-                              style: AppTextStyles.label.copyWith(
-                                fontSize: 10,
-                                color: isWin ? AppColors.teal : (isDraw ? AppColors.gold : AppColors.red),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                  clipBehavior: Clip.antiAlias,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Left Status Bar
+                        Container(
+                          width: 5,
+                          color: accentColor,
                         ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${match.playerScore} - ${match.opponentScore}',
-                            style: AppTextStyles.display.copyWith(fontSize: 20),
+                        
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                SmartAvatar(
+                                  avatarUrl: match.opponentAvatarUrl,
+                                  size: 46,
+                                  showBorder: true,
+                                  showGlow: false,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        match.opponentName,
+                                        style: AppTextStyles.headline.copyWith(
+                                          fontSize: 16,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        statusText,
+                                        style: AppTextStyles.label.copyWith(
+                                          color: accentColor,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 10,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${match.playerScore} - ${match.opponentScore}',
+                                        style: AppTextStyles.display.copyWith(
+                                          fontSize: 16,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.flash_on_rounded, color: AppColors.gold, size: 12),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '+${match.xpEarned} XP',
+                                          style: AppTextStyles.label.copyWith(
+                                            color: AppColors.gold,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                          Text(
-                            '+${match.xpEarned} XP',
-                            style: AppTextStyles.label.copyWith(color: AppColors.gold, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ).animate().fadeIn(delay: (index * 100).ms).slideX(begin: 0.1, end: 0);
+                ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1, end: 0);
               },
             );
           },

@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:questarena/core/constants/colors.dart';
+import 'package:questarena/core/constants/text_styles.dart';
+import 'package:questarena/data/models/leaderboard_model.dart';
+import 'package:questarena/data/models/user_model.dart';
+import 'package:questarena/providers/leaderboard_providers.dart';
+import 'package:questarena/providers/user_providers.dart';
+import 'package:questarena/providers/navigation_providers.dart';
+import 'package:questarena/core/utils/rank_system.dart';
+import 'package:questarena/ui/widgets/smart_avatar.dart';
+import 'package:questarena/ui/widgets/expandable_player_card.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../data/models/leaderboard_model.dart';
@@ -141,12 +151,19 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                     final isMe = player.uid == currentUser?.uid;
                     final isExpanded = _selectedUid == player.uid;
 
-                    return _ExpandablePlayerCard(
-                      player: player,
+                    return ExpandablePlayerCard(
+                      uid: player.uid,
+                      username: player.username,
+                      avatarUrl: player.avatarUrl,
+                      level: player.level,
+                      xp: player.xp,
+                      rank: player.rank,
+                      subRank: player.subRank,
                       isMe: isMe,
                       isExpanded: isExpanded,
                       index: index,
                       onTap: () => _toggleProfile(player.uid),
+                      badge: _RankBadge(index: index),
                     );
                   },
                   childCount: players.length,
@@ -185,7 +202,13 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
           ));
         }
         list.addAll(friends);
-        list.sort((a, b) => b.xp.compareTo(a.xp));
+        
+        // Sort by XP descending (Primary), then Level descending (Secondary)
+        list.sort((a, b) {
+          int cmp = b.xp.compareTo(a.xp);
+          if (cmp == 0) cmp = b.level.compareTo(a.level);
+          return cmp;
+        });
 
         if (friends.isEmpty && list.length <= 1) {
           return Center(
@@ -218,12 +241,19 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                     final isMe = player.uid == currentUser?.uid;
                     final isExpanded = _selectedUid == player.uid;
 
-                    return _ExpandablePlayerCard(
-                      player: player,
+                    return ExpandablePlayerCard(
+                      uid: player.uid,
+                      username: player.username,
+                      avatarUrl: player.avatarUrl,
+                      level: player.level,
+                      xp: player.xp,
+                      rank: player.rank,
+                      subRank: player.subRank,
                       isMe: isMe,
                       isExpanded: isExpanded,
                       index: index,
                       onTap: () => _toggleProfile(player.uid),
+                      badge: _RankBadge(index: index),
                     );
                   },
                   childCount: list.length,
@@ -781,6 +811,7 @@ class _TopPlayerCard extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
+                // Profile Image with circular radial glow
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -824,6 +855,7 @@ class _TopPlayerCard extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
+                // Stats Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
