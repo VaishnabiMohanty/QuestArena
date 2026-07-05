@@ -17,7 +17,6 @@ class AuthRepository {
       final credential = await _service.signIn(email, password);
       return Success(credential.user);
     } on FirebaseAuthException catch (e) {
-      // If we already have a user despite the error, treat as success
       if (FirebaseAuth.instance.currentUser != null) {
         return Success(FirebaseAuth.instance.currentUser);
       }
@@ -28,7 +27,7 @@ class AuthRepository {
         return Success(FirebaseAuth.instance.currentUser);
       }
       debugPrint('Generic Auth Error: $e');
-      return Failure(UnknownError('Connection error. Please check your network.'));
+      return const Failure(UnknownError('Connection error. Please check your network.'));
     }
   }
 
@@ -47,7 +46,7 @@ class AuthRepository {
         return Success(FirebaseAuth.instance.currentUser);
       }
       debugPrint('Generic Auth Error: $e');
-      return Failure(UnknownError('Failed to create account. Please try again.'));
+      return const Failure(UnknownError('Failed to create account. Please try again.'));
     }
   }
 

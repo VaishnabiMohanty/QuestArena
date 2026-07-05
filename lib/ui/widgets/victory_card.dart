@@ -153,9 +153,9 @@ class VictoryCard extends StatelessWidget {
                     showBorder: true,
                   ),
                   // Crown
-                  Positioned(
+                  const Positioned(
                     top: -15,
-                    child: const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 30),
+                    child: Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 30),
                   ),
                   // Name Ribbon
                   Positioned(

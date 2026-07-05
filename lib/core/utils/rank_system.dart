@@ -102,4 +102,13 @@ class RankSystem {
       default: return '';
     }
   }
+
+  static String getRankFromElo(int elo) {
+    if (elo >= 1800) return 'Master';
+    if (elo >= 1600) return 'Diamond';
+    if (elo >= 1400) return 'Platinum';
+    if (elo >= 1200) return 'Gold';
+    if (elo >= 1000) return 'Silver';
+    return 'Bronze';
+  }
 }

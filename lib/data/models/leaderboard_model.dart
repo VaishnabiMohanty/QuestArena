@@ -1,5 +1,6 @@
 // WHAT THIS FILE DOES:
 // A lightweight model for showing players in the global rankings.
+// Now derived from the same source of truth as UserModel.
 
 class LeaderboardModel {
   final String uid;
@@ -8,10 +9,14 @@ class LeaderboardModel {
   final int level;
   final int xp;
   final String rank;
-  final int totalWins;
-  final int currentStreak;
-  final double averageAccuracy;
   final int? subRank;
+  final int wins;
+  final int losses;
+  final int draws;
+  final int currentWinStreak;
+  final double averageAccuracy;
+  final int eloRating;
+  final String? selectedBorder;
 
   LeaderboardModel({
     required this.uid,
@@ -20,26 +25,43 @@ class LeaderboardModel {
     required this.level,
     required this.xp,
     required this.rank,
-    this.totalWins = 0,
-    this.currentStreak = 0,
-    this.averageAccuracy = 0.0,
     this.subRank,
+    this.wins = 0,
+    this.losses = 0,
+    this.draws = 0,
+    this.currentWinStreak = 0,
+    this.averageAccuracy = 0.0,
+    this.eloRating = 1200,
+    this.selectedBorder,
   });
 
-  double get mvpScore => (xp / 10) + (totalWins * 10) + (averageAccuracy * 2) + (currentStreak * 5);
+  // Calculated values
+  int get totalMatches => wins + losses + draws;
+
+  double get winRate {
+    if (totalMatches == 0) return 0.0;
+    return (wins / totalMatches) * 100;
+  }
+
+  // MVP Score for ranking logic
+  double get mvpScore => (xp / 10) + (wins * 10) + (averageAccuracy * 2) + (currentWinStreak * 5);
 
   factory LeaderboardModel.fromJson(Map<String, dynamic> json) {
     return LeaderboardModel(
-      uid: json['uid'] ?? '',
+      uid: json['uid'] ?? json['friendUid'] ?? '',
       username: json['username'] ?? '',
       avatarUrl: json['avatarUrl'],
       level: json['level'] ?? 1,
       xp: json['xp'] ?? 0,
-      rank: json['rank'] ?? 'Bronze',
-      totalWins: json['totalWins'] ?? 0,
-      currentStreak: json['currentStreak'] ?? 0,
-      averageAccuracy: (json['averageAccuracy'] ?? 0).toDouble(),
+      rank: json['rank'] ?? 'Unranked',
       subRank: json['subRank'],
+      wins: json['wins'] ?? json['totalWins'] ?? 0,
+      losses: json['losses'] ?? json['totalLosses'] ?? 0,
+      draws: json['draws'] ?? json['totalDraws'] ?? 0,
+      currentWinStreak: json['currentWinStreak'] ?? json['currentStreak'] ?? 0,
+      averageAccuracy: (json['averageAccuracy'] ?? 0).toDouble(),
+      eloRating: json['eloRating'] ?? 1200,
+      selectedBorder: json['selectedBorder'],
     );
   }
 
@@ -50,9 +72,13 @@ class LeaderboardModel {
     'level': level,
     'xp': xp,
     'rank': rank,
-    'totalWins': totalWins,
-    'currentStreak': currentStreak,
-    'averageAccuracy': averageAccuracy,
     'subRank': subRank,
+    'wins': wins,
+    'losses': losses,
+    'draws': draws,
+    'currentWinStreak': currentWinStreak,
+    'averageAccuracy': averageAccuracy,
+    'eloRating': eloRating,
+    'selectedBorder': selectedBorder,
   };
 }

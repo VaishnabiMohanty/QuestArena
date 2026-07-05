@@ -129,37 +129,49 @@ class StoreScreen extends ConsumerWidget {
 
   Widget _buildRankProtectionSection(BuildContext context, WidgetRef ref, dynamic user) {
     final shields = ShopService.rankProtectionCosts.entries.toList();
+    final int remainingMatches = user?.rankProtectionMatches ?? 0;
 
     return Column(
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: AppColors.purple.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.purple.withValues(alpha: 0.3)),
           ),
-          child: Text(
-            'Remaining Protection: ${user?.rankProtectionMatches ?? 0} Matches',
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.purple, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.security, color: AppColors.purple, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Remaining Protection: $remainingMatches Matches',
+                style: AppTextStyles.bodyMd.copyWith(
+                  color: AppColors.purple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
-        ...shields.map((entry) => _buildShopItem(
-              context: context,
-              title: '${entry.key} Match Protection',
-              description: 'Prevents Rank Point loss for ${entry.key} matches.',
-              price: entry.value,
-              owned: 0, // Not applicable for individual items
-              onTap: () => ref
-                  .read(shopControllerProvider.notifier)
-                  .purchaseRankProtection(entry.key, entry.value),
-              canAfford: (user?.coins ?? 0) >= entry.value,
-              icon: Icons.security,
-              hideOwned: true,
-            )),
+        ...shields.map((entry) {
+          final bool canAfford = (user?.coins ?? 0) >= entry.value;
+
+          return _buildShopItem(
+            context: context,
+            title: '${entry.key} Match Protection',
+            description: 'Prevents Rank Point loss for ${entry.key} matches.',
+            price: entry.value,
+            owned: 0,
+            onTap: () => ref.read(shopControllerProvider.notifier).purchaseRankProtection(entry.key, entry.value),
+            canAfford: canAfford,
+            icon: Icons.security,
+            hideOwned: true,
+          );
+        }),
       ],
     );
   }
@@ -177,6 +189,7 @@ class StoreScreen extends ConsumerWidget {
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(16),

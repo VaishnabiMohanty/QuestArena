@@ -20,9 +20,12 @@ class GameRoomModel {
   final String? nextMatchId;
   final int? categoryId;
   final String categoryName;
+  final bool isRanked;
+  final Map<String, dynamic> powerups;
 
   // Arena Breaker Fields
   final bool isArenaBreaker;
+  final int arenaBreakerRound;
   final Map<String, dynamic>? arenaBreakerQuestion;
   final Map<String, dynamic> arenaBreakerSubmissions;
   final bool isArenaBreakerWin;
@@ -49,7 +52,10 @@ class GameRoomModel {
     this.nextMatchId,
     this.categoryId,
     this.categoryName = 'Mixed / Random',
+    this.isRanked = true,
+    this.powerups = const {},
     this.isArenaBreaker = false,
+    this.arenaBreakerRound = 0,
     this.arenaBreakerQuestion,
     this.arenaBreakerSubmissions = const {},
     this.isArenaBreakerWin = false,
@@ -59,6 +65,14 @@ class GameRoomModel {
   });
 
   factory GameRoomModel.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return null;
+    }
+
     return GameRoomModel(
       roomId: json['roomId'] ?? '',
       roomCode: json['roomCode'] ?? '',
@@ -67,11 +81,7 @@ class GameRoomModel {
       player2: json['player2'] != null ? Map<String, dynamic>.from(json['player2']) : null,
       questions: List<dynamic>.from(json['questions'] ?? []),
       currentQuestionIndex: json['currentQuestionIndex'] ?? 0,
-      questionStartedAt: json['questionStartedAt'] != null
-          ? (json['questionStartedAt'] is Timestamp
-              ? (json['questionStartedAt'] as Timestamp).toDate()
-              : DateTime.tryParse(json['questionStartedAt'].toString()))
-          : null,
+      questionStartedAt: parseDate(json['questionStartedAt']),
       winnerId: json['winnerId'],
       claimedRewards: List<String>.from(json['claimedRewards'] ?? []),
       player1Emoji: json['player1Emoji'],
@@ -80,8 +90,13 @@ class GameRoomModel {
       nextMatchId: json['nextMatchId'],
       categoryId: json['categoryId'],
       categoryName: json['categoryName'] ?? 'Mixed / Random',
+      isRanked: json['isRanked'] ?? true,
+      powerups: Map<String, dynamic>.from(json['powerups'] ?? {}),
       isArenaBreaker: json['isArenaBreaker'] ?? false,
-      arenaBreakerQuestion: json['arenaBreakerQuestion'],
+      arenaBreakerRound: json['arenaBreakerRound'] ?? 0,
+      arenaBreakerQuestion: json['arenaBreakerQuestion'] != null 
+          ? Map<String, dynamic>.from(json['arenaBreakerQuestion']) 
+          : null,
       arenaBreakerSubmissions: Map<String, dynamic>.from(json['arenaBreakerSubmissions'] ?? {}),
       isArenaBreakerWin: json['isArenaBreakerWin'] ?? false,
       arenaBreakerStatusMessage: json['arenaBreakerStatusMessage'],
@@ -91,30 +106,33 @@ class GameRoomModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'roomId': roomId,
-        'roomCode': roomCode,
-        'status': status,
-        'player1': player1,
-        'player2': player2,
-        'questions': questions,
-        'currentQuestionIndex': currentQuestionIndex,
-        'questionStartedAt': questionStartedAt != null ? Timestamp.fromDate(questionStartedAt!) : null,
-        'winnerId': winnerId,
-        'claimedRewards': claimedRewards,
-        'player1Emoji': player1Emoji,
-        'player2Emoji': player2Emoji,
-        'rematchRequests': rematchRequests,
-        'nextMatchId': nextMatchId,
-        'categoryId': categoryId,
-        'categoryName': categoryName,
-        'isArenaBreaker': isArenaBreaker,
-        'arenaBreakerQuestion': arenaBreakerQuestion,
-        'arenaBreakerSubmissions': arenaBreakerSubmissions,
-        'isArenaBreakerWin': isArenaBreakerWin,
-        'arenaBreakerStatusMessage': arenaBreakerStatusMessage,
-        'presence': presence,
-        'forfeitWinnerId': forfeitWinnerId,
-      };
+    'roomId': roomId,
+    'roomCode': roomCode,
+    'status': status,
+    'player1': player1,
+    'player2': player2,
+    'questions': questions,
+    'currentQuestionIndex': currentQuestionIndex,
+    'questionStartedAt': questionStartedAt != null ? Timestamp.fromDate(questionStartedAt!) : null,
+    'winnerId': winnerId,
+    'claimedRewards': claimedRewards,
+    'player1Emoji': player1Emoji,
+    'player2Emoji': player2Emoji,
+    'rematchRequests': rematchRequests,
+    'nextMatchId': nextMatchId,
+    'categoryId': categoryId,
+    'categoryName': categoryName,
+    'isRanked': isRanked,
+    'powerups': powerups,
+    'isArenaBreaker': isArenaBreaker,
+    'arenaBreakerRound': arenaBreakerRound,
+    'arenaBreakerQuestion': arenaBreakerQuestion,
+    'arenaBreakerSubmissions': arenaBreakerSubmissions,
+    'isArenaBreakerWin': isArenaBreakerWin,
+    'arenaBreakerStatusMessage': arenaBreakerStatusMessage,
+    'presence': presence,
+    'forfeitWinnerId': forfeitWinnerId,
+  };
 
   GameRoomModel copyWith({
     String? status,
@@ -123,10 +141,13 @@ class GameRoomModel {
     int? currentQuestionIndex,
     DateTime? questionStartedAt,
     String? winnerId,
+    bool? isRanked,
     bool? isArenaBreaker,
+    int? arenaBreakerRound,
     Map<String, dynamic>? arenaBreakerQuestion,
     Map<String, dynamic>? arenaBreakerSubmissions,
     bool? isArenaBreakerWin,
+    Map<String, dynamic>? powerups,
     String? player1Emoji,
     String? player2Emoji,
     List<String>? rematchRequests,
@@ -150,7 +171,10 @@ class GameRoomModel {
       nextMatchId: nextMatchId ?? this.nextMatchId,
       categoryId: categoryId,
       categoryName: categoryName,
+      isRanked: isRanked ?? this.isRanked,
+      powerups: powerups ?? this.powerups,
       isArenaBreaker: isArenaBreaker ?? this.isArenaBreaker,
+      arenaBreakerRound: arenaBreakerRound ?? this.arenaBreakerRound,
       arenaBreakerQuestion: arenaBreakerQuestion ?? this.arenaBreakerQuestion,
       arenaBreakerSubmissions: arenaBreakerSubmissions ?? this.arenaBreakerSubmissions,
       isArenaBreakerWin: isArenaBreakerWin ?? this.isArenaBreakerWin,

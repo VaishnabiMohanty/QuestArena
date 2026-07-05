@@ -9,6 +9,7 @@ import '../services/xp_service.dart';
 import '../services/rank_service.dart';
 import '../services/avatar_service.dart';
 import '../../core/utils/level_system.dart';
+import '../../core/utils/rank_system.dart';
 
 class UserRepository {
   final FirestoreService _service;
@@ -79,14 +80,20 @@ class UserRepository {
     }
   }
 
+  Future<void> deleteUserProfile(String uid) async {
+    await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+  }
+
   Future<MatchEndResult?> processMatchEnd({
     required String uid,
     required bool isWin,
     bool isDraw = false,
-    bool isArenaBreakerWin = false,
     required int correctAnswers,
     required int totalQuestions,
     required int coinsGained,
+    bool isArenaBreakerWin = false,
+    bool isRanked = true,
+    bool rankProtectionActive = false,
   }) async {
     final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
     MatchEndResult? result;
@@ -98,6 +105,7 @@ class UserRepository {
       final userData = snapshot.data()!;
       final user = UserModel.fromJson(userData);
 
+      // 1. Calculate XP Rewards
       final xpRewards = XpService.calculateMatchRewards(
         user: user,
         isWin: isWin,
@@ -106,32 +114,77 @@ class UserRepository {
         totalQuestions: totalQuestions,
       );
 
-      final wrongAnswers = totalQuestions - correctAnswers;
-      var rankUpdate = RankService.calculateRankUpdate(
-        user: user,
-        correctAnswers: correctAnswers,
-        wrongAnswers: wrongAnswers,
-      );
-
+      // 2. Handle Rank and ELO
+      int newElo = user.eloRating;
       bool rankProtectionUsed = false;
       int remainingRankProtection = user.rankProtectionMatches;
+      
+      // Default: No rank change
+      var rankUpdate = RankUpdateResult(
+        oldRank: user.rank,
+        oldSubRank: user.subRank,
+        oldPoints: user.rankPoints,
+        newRank: user.rank,
+        newSubRank: user.subRank,
+        newPoints: user.rankPoints,
+        pointsGained: 0,
+      );
 
-      if (remainingRankProtection > 0 && (rankUpdate.pointsGained < 0 || rankUpdate.demoted)) {
-        rankProtectionUsed = true;
-        remainingRankProtection--;
-
-        // Reset rank update to original state
-        rankUpdate = RankUpdateResult(
-          oldRank: user.rank,
-          oldSubRank: user.subRank,
-          oldPoints: user.rankPoints,
-          newRank: user.rank,
-          newSubRank: user.subRank,
-          newPoints: user.rankPoints,
-          pointsGained: 0,
-          promoted: false,
-          demoted: false,
+      if (isRanked) {
+        final wrongAnswers = totalQuestions - correctAnswers;
+        
+        // Calculate RP (Rank Points) update via RankService
+        rankUpdate = RankService.calculateRankUpdate(
+          user: user,
+          correctAnswers: correctAnswers,
+          wrongAnswers: wrongAnswers,
         );
+
+        if (!isDraw) {
+          final eloChange = isWin ? 20 : -20;
+          newElo = (user.eloRating + eloChange).clamp(0, 5000);
+          final eloRank = RankSystem.getRankFromElo(newElo);
+          
+          final int eloRankIndex = RankSystem.ranks.indexOf(eloRank);
+          final int currentRankIndex = RankSystem.ranks.indexOf(rankUpdate.newRank);
+          
+          if (eloRankIndex != currentRankIndex) {
+             // Tier shift detected by ELO
+             rankUpdate = RankUpdateResult(
+               oldRank: user.rank,
+               oldSubRank: user.subRank,
+               oldPoints: user.rankPoints,
+               newRank: eloRank,
+               newSubRank: eloRankIndex > currentRankIndex ? 3 : 1,
+               newPoints: 0,
+               pointsGained: eloChange,
+               promoted: eloRankIndex > currentRankIndex,
+               demoted: eloRankIndex < currentRankIndex,
+             );
+          }
+        }
+        
+        // Apply Rank Protection if active and result is negative
+        if (rankProtectionActive && remainingRankProtection > 0) {
+          if (rankUpdate.pointsGained < 0 || rankUpdate.demoted) {
+            rankProtectionUsed = true;
+            remainingRankProtection--;
+            
+            rankUpdate = RankUpdateResult(
+              oldRank: user.rank,
+              oldSubRank: user.subRank,
+              oldPoints: user.rankPoints,
+              newRank: user.rank,
+              newSubRank: user.subRank,
+              newPoints: user.rankPoints,
+              pointsGained: 0,
+              promoted: false,
+              demoted: false,
+            );
+            // Restore elo if protection used
+            newElo = user.eloRating;
+          }
+        }
       }
 
       final totalXp = user.xp + xpRewards.total;
@@ -140,9 +193,7 @@ class UserRepository {
       final currentWinStreak = isWin ? user.currentWinStreak + 1 : 0;
       final highestWinStreak = currentWinStreak > user.highestWinStreak ? currentWinStreak : user.highestWinStreak;
 
-      final lastDailyBonusDate = xpRewards.dailyBonusXp > 0 ? DateTime.now() : user.lastDailyBonusDate;
-
-      // Achievements (Simplified logic, the detailed one is in AchievementService)
+      // Achievements Logic
       final achievements = List<String>.from(user.achievements);
       if (isWin && !achievements.contains('first_win')) {
         achievements.add('first_win');
@@ -152,11 +203,15 @@ class UserRepository {
         achievements.add('veteran');
       }
 
-      final abWins = user.arenaBreakerWins + (isArenaBreakerWin && isWin ? 1 : 0);
-      final abLosses = user.arenaBreakerLosses + (isArenaBreakerWin && !isWin && !isDraw ? 1 : 0);
-
-      if (isArenaBreakerWin && isWin && !achievements.contains('arena_breaker')) {
-        achievements.add('arena_breaker');
+      int abWins = user.arenaBreakerWins;
+      int abLosses = user.arenaBreakerLosses;
+      if (isArenaBreakerWin) {
+        if (isWin) {
+          abWins++;
+          if (!achievements.contains('arena_breaker')) achievements.add('arena_breaker');
+        } else if (!isDraw) {
+          abLosses++;
+        }
       }
 
       transaction.update(userRef, {
@@ -166,11 +221,10 @@ class UserRepository {
         'wins': totalWins,
         'losses': user.losses + (!isWin && !isDraw ? 1 : 0),
         'draws': user.draws + (isDraw ? 1 : 0),
-        'matchesPlayed': user.matchesPlayed + 1,
+        'eloRating': newElo,
         'weeklyMatchesPlayed': user.weeklyMatchesPlayed + 1,
         'currentWinStreak': currentWinStreak,
         'highestWinStreak': highestWinStreak,
-        'lastDailyBonusDate': lastDailyBonusDate != null ? Timestamp.fromDate(lastDailyBonusDate) : null,
         'rank': rankUpdate.newRank,
         'subRank': rankUpdate.newSubRank,
         'rankPoints': rankUpdate.newPoints,
@@ -178,9 +232,11 @@ class UserRepository {
         'arenaBreakerWins': abWins,
         'arenaBreakerLosses': abLosses,
         'rankProtectionMatches': remainingRankProtection,
+        'rankProtectionActive': false,
+        'ownedShieldPackage': remainingRankProtection > 0 ? user.ownedShieldPackage : 0,
       });
 
-      // Unlock Avatars if league changed or even if it didn't (to be safe)
+      // Unlock Avatars if eligible
       final newUnlockedAvatars = AvatarService.getEligibleAvatars(
         rankUpdate.newRank,
         user.unlockedAvatars,
@@ -202,23 +258,6 @@ class UserRepository {
     return result;
   }
 
-  // Backward compatibility
-  Future<void> updateUserStats({
-    required String uid,
-    required int xpGained,
-    required int coinsGained,
-    required bool isWin,
-  }) async {
-    await processMatchEnd(
-      uid: uid,
-      isWin: isWin,
-      isDraw: false,
-      correctAnswers: 0,
-      totalQuestions: 0,
-      coinsGained: coinsGained,
-    );
-  }
-
   Future<void> saveMatchHistory(String uid, MatchModel history) async {
     await FirebaseFirestore.instance
         .collection('users')
@@ -228,21 +267,18 @@ class UserRepository {
         .set(history.toJson());
   }
 
-  Stream<List<MatchModel>> watchMatchHistory(String uid) {
+  Stream<List<MatchModel>> watchMatchHistory(String uid, {int limit = 20}) {
     return FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('matchHistory')
-        .limit(20)
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snapshot) {
-      final history = snapshot.docs.map((doc) => MatchModel.fromJson(doc.data())).toList();
-      history.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      return history;
+      return snapshot.docs
+          .map((doc) => MatchModel.fromJson(doc.data()))
+          .toList();
     });
-  }
-
-  Future<void> deleteUserProfile(String uid) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).delete();
   }
 }

@@ -3,15 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/utils/rank_system.dart';
 import '../../../providers/user_providers.dart';
 import '../../../providers/coin_providers.dart';
+import '../../../data/models/user_model.dart';
+import '../store_screen.dart';
+import '../../../core/utils/rank_system.dart';
 import '../../widgets/rank_badge.dart';
 import '../../widgets/xp_progress_bar.dart';
-import '../../widgets/smart_avatar.dart';
 import '../../widgets/bordered_avatar.dart';
+import '../../widgets/smart_avatar.dart';
 import '../../widgets/neon_swirl_background.dart';
-import '../store_screen.dart';
+import '../../widgets/daily_quests_sheet.dart';
 
 class DashboardTab extends ConsumerStatefulWidget {
   const DashboardTab({super.key});
@@ -56,6 +58,12 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
 
         return Scaffold(
           backgroundColor: Colors.transparent,
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => DailyQuestsSheet.show(context),
+            backgroundColor: AppColors.gold,
+            icon: const Icon(Icons.bolt_rounded, color: Colors.black),
+            label: const Text('QUESTS', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          ).animate().slideX(begin: 1, end: 0, delay: 1000.ms, curve: Curves.easeOutBack),
           body: NeonSwirlBackground(
             colors: const [AppColors.neonCyan, AppColors.purple],
             child: FadeTransition(
@@ -66,20 +74,28 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // TOP BAR
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'DASHBOARD',
-                          style: AppTextStyles.headline.copyWith(fontSize: 18, letterSpacing: 2),
-                        ),
-                        _buildActionButtons(context),
-                      ],
+                    SafeArea(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'DASHBOARD',
+                            style: AppTextStyles.headline.copyWith(fontSize: 18, letterSpacing: 2),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const StoreScreen()),
+                            ),
+                            icon: const Icon(Icons.shopping_bag_rounded, color: AppColors.gold),
+                          ),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // ENHANCED PROFILE HEADER CARD
+                    // PROFILE CARD
                     _buildProfileCard(user),
 
                     const SizedBox(height: 32),
@@ -89,11 +105,11 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
 
                     const SizedBox(height: 32),
 
-                    // Quick Stats & Streak
+                    // Battle Stats
                     Text('BATTLE STATS', style: AppTextStyles.label),
                     const SizedBox(height: 12),
                     _buildStatsRow(user),
-                    
+
                     const SizedBox(height: 32),
                     const _RecentHistorySection(),
                   ],
@@ -106,21 +122,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const StoreScreen()),
-          ),
-          icon: const Icon(Icons.shopping_bag_rounded, color: AppColors.gold),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfileCard(dynamic user) {
+  Widget _buildProfileCard(UserModel user) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -212,7 +214,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
     );
   }
 
-  Widget _buildDailyCoinProgress(dynamic user, double coinProgress) {
+  Widget _buildDailyCoinProgress(UserModel user, double coinProgress) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -251,19 +253,19 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
     ).animate().fadeIn(delay: 300.ms);
   }
 
-  Widget _buildStatsRow(dynamic user) {
+  Widget _buildStatsRow(UserModel user) {
     return Row(
       children: [
         _StatCard(
-          label: 'WIN STREAK', 
-          value: '${user.currentWinStreak}', 
+          label: 'WIN STREAK',
+          value: '${user.currentWinStreak}',
           color: AppColors.teal,
           icon: Icons.bolt_rounded,
         ),
         const SizedBox(width: 16),
         _StatCard(
-          label: 'LOGIN STREAK', 
-          value: '${user.loginStreak}D', 
+          label: 'LOGIN STREAK',
+          value: '${user.loginStreak}D',
           color: AppColors.gold,
           icon: Icons.whatshot_rounded,
         ),
@@ -318,7 +320,7 @@ class _RecentHistorySection extends ConsumerWidget {
           children: [
             Text('RECENT MATCHES', style: AppTextStyles.label),
             TextButton(
-              onPressed: () {}, 
+              onPressed: () {},
               child: const Text('View All', style: TextStyle(fontSize: 10, color: AppColors.gold)),
             ),
           ],
@@ -367,9 +369,9 @@ class _RecentHistorySection extends ConsumerWidget {
                           children: [
                             Text(match.opponentName, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
                             Text(
-                              isWin ? 'Victory' : (isDraw ? 'Draw' : 'Defeat'), 
+                              isWin ? 'Victory' : (isDraw ? 'Draw' : 'Defeat'),
                               style: AppTextStyles.label.copyWith(
-                                fontSize: 10, 
+                                fontSize: 10,
                                 color: isWin ? AppColors.teal : (isDraw ? AppColors.gold : AppColors.red),
                               ),
                             ),

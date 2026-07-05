@@ -5,8 +5,6 @@ class ShopService {
   static const Map<int, int> rankProtectionCosts = {
     1: 20,
     2: 35,
-    3: 50,
-    4: 65,
     5: 75,
   };
 

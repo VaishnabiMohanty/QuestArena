@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
-import '../../core/utils/rank_system.dart';
 
 class RankBadge extends StatelessWidget {
   final String rank;

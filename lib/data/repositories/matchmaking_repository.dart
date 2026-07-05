@@ -16,42 +16,74 @@ class MatchmakingRepository {
 
   // Start searching for a match
   Future<void> startSearching(MatchmakingModel ticket) async {
-    // 0. Check if a ticket already exists to prevent duplicate entries
-    final existingDoc = await _db.collection('matchmaking').doc(ticket.uid).get();
-    if (existingDoc.exists && existingDoc.get('status') == 'searching') {
-      return; // Already searching
-    }
-
-    // 1. Save our ticket
+    // 1. Save our ticket (Overwrites existing to ensure latest category is used)
     await _db.collection('matchmaking').doc(ticket.uid).set(ticket.toJson());
 
-    // 2. Look for another player who is also searching
+    // 2. Try to find a match
+    await _tryMatch(ticket);
+  }
+
+  // Expansion method to be called periodically by the client
+  Future<void> expandSearch(String uid) async {
+    final doc = await _db.collection('matchmaking').doc(uid).get();
+    if (!doc.exists || doc.data() == null) return;
+    
+    final data = doc.data()!;
+    if (data['status'] != 'searching') return;
+
+    final currentRange = (data['searchRange'] as num? ?? 100).toInt();
+    final newRange = currentRange + 100;
+
+    // Update the ticket
+    await _db.collection('matchmaking').doc(uid).update({'searchRange': newRange});
+    
+    // Try matching again with the new range
+    final updatedTicket = MatchmakingModel.fromJson({...data, 'searchRange': newRange});
+    await _tryMatch(updatedTicket);
+  }
+
+  Future<void> _tryMatch(MatchmakingModel ticket) async {
+    // Look for another player who is also searching
     final potentialMatches = await _db.collection('matchmaking')
         .where('status', isEqualTo: 'searching')
         .get();
 
-    // Filter in Dart to avoid requiring a Firestore composite index for category matching.
     QueryDocumentSnapshot<Map<String, dynamic>>? matchDoc;
+    int bestEloDiff = 999999;
+
     for (final doc in potentialMatches.docs) {
       if (doc.id == ticket.uid) continue;
 
       final data = doc.data();
-      if (data['categoryId'] == ticket.categoryId) {
-        matchDoc = doc;
-        break;
+      
+      // 1. Category must match
+      if (data['categoryId'] != ticket.categoryId) continue;
+
+      // 2. ELO check
+      final int opponentElo = (data['eloRating'] as num? ?? 1200).toInt();
+      final int ticketElo = ticket.eloRating;
+      final int eloDiff = (ticketElo - opponentElo).abs();
+      
+      // Match if within search range of EITHER player
+      final int opponentRange = (data['searchRange'] as num? ?? 100).toInt();
+      final int ticketRange = ticket.searchRange;
+      final int maxAllowedDiff = ticketRange > opponentRange ? ticketRange : opponentRange;
+
+      if (eloDiff <= maxAllowedDiff) {
+        if (eloDiff < bestEloDiff) {
+          bestEloDiff = eloDiff.toInt();
+          matchDoc = doc;
+        }
       }
     }
 
     if (matchDoc != null) {
       final opponentUid = matchDoc.id;
-
-      // 3. Create a game room
       final roomId = _db.collection('gameRooms').doc().id;
       
       final player1Data = ticket.toJson();
       final player2Data = matchDoc.data();
 
-      // Fetch questions from client side since Cloud Functions are not available on Spark plan
       List<Map<String, dynamic>> questions = [];
       try {
         final response = await _dio.get(
@@ -71,17 +103,17 @@ class MatchmakingRepository {
 
       await _db.collection('gameRooms').doc(roomId).set({
         'roomId': roomId,
-        'roomCode': '', // Not needed for public matchmaking
+        'roomCode': '',
         'categoryId': ticket.categoryId,
         'categoryName': ticket.categoryName,
         'status': 'waiting',
+        'isRanked': true,
         'player1': {...player1Data, 'isReady': false, 'score': 0, 'answers': []},
         'player2': {...player2Data, 'isReady': false, 'score': 0, 'answers': []},
         'createdAt': FieldValue.serverTimestamp(),
         'questions': questions,
       });
 
-      // 4. Update both tickets to 'matched'
       final batch = _db.batch();
       batch.update(_db.collection('matchmaking').doc(ticket.uid), {
         'status': 'matched',

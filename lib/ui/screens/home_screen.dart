@@ -1,6 +1,3 @@
-// WHAT THIS FILE DOES:
-// Main navigation hub with automatic daily reward logic.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
@@ -18,6 +15,7 @@ import 'tabs/profile_tab.dart';
 import '../widgets/streak_reward_popup.dart';
 import '../widgets/achievement_popup.dart';
 import '../widgets/weekly_reward_popup.dart';
+import '../../providers/navigation_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +25,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _selectedIndex = 0;
   bool _checkedDailyReward = false;
   bool _checkedWeeklyReward = false;
   bool _syncedRetroactive = false;
@@ -51,14 +48,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _checkWeeklyReward() async {
     if (_checkedWeeklyReward) return;
-    
+
     final user = ref.read(currentUserProvider).value;
     if (user == null) return;
 
     final weeklyRewards = await ref.read(weeklyRewardProvider.future);
     if (weeklyRewards != null && mounted) {
       _checkedWeeklyReward = true;
-      
+
       final border = AppBorders.getBorderById(weeklyRewards['borderId']);
 
       showDialog(
@@ -79,7 +76,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _syncRetroactiveData() async {
     if (_syncedRetroactive) return;
-    
+
     final user = ref.read(currentUserProvider).value;
     if (user == null) return;
 
@@ -118,13 +115,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onClaim: () => Navigator.pop(context),
           ),
         );
-        return;
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = ref.watch(tabIndexProvider);
+
     // Listen for achievements
     ref.listen(lastUnlockedAchievementProvider, (previous, next) {
       if (next != null) {
@@ -151,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     return Scaffold(
-      body: _tabs[_selectedIndex],
+      body: _tabs[selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.divider.withValues(alpha: 0.5), width: 0.5)),
@@ -160,8 +158,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           height: 65,
           elevation: 0,
           backgroundColor: AppColors.bgBase,
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          selectedIndex: selectedIndex,
+          onDestinationSelected: (index) => ref.read(tabIndexProvider.notifier).state = index,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           indicatorColor: AppColors.neonCyan.withValues(alpha: 0.1),
           destinations: [

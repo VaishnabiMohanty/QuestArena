@@ -28,12 +28,11 @@ class StreakService {
 
     // 3. Calculate new streak
     int newStreak = isConsecutive ? user.loginStreak + 1 : 1;
-    bool shouldReward = newStreak == 7;
-    int finalStreak = shouldReward ? 0 : newStreak; // Reset to 0 after 7 as per requirements
+    bool shouldReward = newStreak % 7 == 0; // Reward every 7 days
 
     final result = await _repository.processLoginStreakTransaction(
       uid: user.uid,
-      newStreak: finalStreak,
+      newStreak: newStreak,
       shouldReward: shouldReward,
       rewardAmount: 200,
     );

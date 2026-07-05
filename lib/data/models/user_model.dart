@@ -14,7 +14,7 @@ class UserModel {
   final int wins;
   final int losses;
   final int draws;
-  final int matchesPlayed;
+  final int eloRating;
   final int currentWinStreak;
   final int highestWinStreak;
   final List<String> achievements;
@@ -42,6 +42,8 @@ class UserModel {
   final int oneOptionLifelines;
   final int twoOptionLifelines;
   final int rankProtectionMatches;
+  final bool rankProtectionActive;
+  final int ownedShieldPackage;
   final DateTime? lastDailyBonusDate;
 
   UserModel({
@@ -52,13 +54,13 @@ class UserModel {
     this.level = 1,
     this.xp = 0,
     this.coins = 0,
-    this.rank = 'Bronze',
+    this.rank = 'Unranked',
     this.subRank,
     this.rankPoints = 0,
     this.wins = 0,
     this.losses = 0,
     this.draws = 0,
-    this.matchesPlayed = 0,
+    this.eloRating = 1200,
     this.currentWinStreak = 0,
     this.highestWinStreak = 0,
     this.achievements = const [],
@@ -82,12 +84,37 @@ class UserModel {
     this.oneOptionLifelines = 0,
     this.twoOptionLifelines = 0,
     this.rankProtectionMatches = 0,
+    this.rankProtectionActive = false,
+    this.ownedShieldPackage = 0,
     this.lastDailyBonusDate,
   })  : lastCoinResetDate = lastCoinResetDate ?? DateTime(2000),
         lastDailyLoginRewardDate = lastDailyLoginRewardDate ?? DateTime(2000),
         lastLoginDate = lastLoginDate ?? DateTime(2000);
 
+  // Calculated getters
+  int get matchesPlayed => wins + losses + draws;
+
+  double get winRate {
+    if (matchesPlayed == 0) return 0.0;
+    return (wins / matchesPlayed) * 100;
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final rankVal = json['rank'] ?? 'Unranked';
+    int? subRankVal = json['subRank'];
+
+    if (subRankVal == null && rankVal != 'Unranked' && rankVal != 'Legend') {
+      subRankVal = 3;
+    }
+
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return null;
+    }
+
     return UserModel(
       uid: json['uid'] ?? '',
       username: json['username'] ?? '',
@@ -96,13 +123,13 @@ class UserModel {
       level: json['level'] ?? 1,
       xp: json['xp'] ?? 0,
       coins: json['coins'] ?? 0,
-      rank: json['rank'] ?? 'Bronze',
-      subRank: json['subRank'],
+      rank: rankVal,
+      subRank: subRankVal,
       rankPoints: json['rankPoints'] ?? 0,
       wins: json['wins'] ?? json['totalWins'] ?? 0,
       losses: json['losses'] ?? json['totalLosses'] ?? 0,
       draws: json['draws'] ?? json['totalDraws'] ?? 0,
-      matchesPlayed: json['matchesPlayed'] ?? 0,
+      eloRating: json['eloRating'] ?? 1200,
       currentWinStreak: json['currentWinStreak'] ?? json['currentStreak'] ?? 0,
       highestWinStreak: json['highestWinStreak'] ?? 0,
       achievements: List<String>.from(json['achievements'] ?? []),
@@ -110,22 +137,14 @@ class UserModel {
       unlockedBorders: List<String>.from(json['unlockedBorders'] ?? []),
       selectedBorder: json['selectedBorder'],
       weeklyMatchesPlayed: json['weeklyMatchesPlayed'] ?? 0,
-      lastWeeklyRewardDate: json['lastWeeklyRewardDate'] != null
-          ? (json['lastWeeklyRewardDate'] as Timestamp).toDate()
-          : null,
+      lastWeeklyRewardDate: parseDate(json['lastWeeklyRewardDate']),
       weeklyLeague: json['weeklyLeague'],
       powerUps: Map<String, int>.from(json['powerUps'] ?? {'fiftyFifty': 5, 'timeFreeze': 5}),
       todayCoinsEarned: json['todayCoinsEarned'] ?? 0,
-      lastCoinResetDate: json['lastCoinResetDate'] != null
-          ? (json['lastCoinResetDate'] as Timestamp).toDate()
-          : DateTime(2000),
-      lastDailyLoginRewardDate: json['lastDailyLoginRewardDate'] != null
-          ? (json['lastDailyLoginRewardDate'] as Timestamp).toDate()
-          : DateTime(2000),
+      lastCoinResetDate: parseDate(json['lastCoinResetDate']),
+      lastDailyLoginRewardDate: parseDate(json['lastDailyLoginRewardDate']),
       loginStreak: json['loginStreak'] ?? 0,
-      lastLoginDate: json['lastLoginDate'] != null
-          ? (json['lastLoginDate'] as Timestamp).toDate()
-          : DateTime(2000),
+      lastLoginDate: parseDate(json['lastLoginDate']),
       lastRewardedMatchId: json['lastRewardedMatchId'],
       lastLeagueRewardClaimed: json['lastLeagueRewardClaimed'],
       arenaBreakerWins: json['arenaBreakerWins'] ?? 0,
@@ -134,9 +153,9 @@ class UserModel {
       oneOptionLifelines: json['oneOptionLifelines'] ?? 0,
       twoOptionLifelines: json['twoOptionLifelines'] ?? 0,
       rankProtectionMatches: json['rankProtectionMatches'] ?? 0,
-      lastDailyBonusDate: json['lastDailyBonusDate'] != null
-          ? (json['lastDailyBonusDate'] as Timestamp).toDate()
-          : null,
+      rankProtectionActive: json['rankProtectionActive'] ?? false,
+      ownedShieldPackage: json['ownedShieldPackage'] ?? 0,
+      lastDailyBonusDate: parseDate(json['lastDailyBonusDate']),
     );
   }
 
@@ -154,7 +173,7 @@ class UserModel {
         'wins': wins,
         'losses': losses,
         'draws': draws,
-        'matchesPlayed': matchesPlayed,
+        'eloRating': eloRating,
         'currentWinStreak': currentWinStreak,
         'highestWinStreak': highestWinStreak,
         'achievements': achievements,
@@ -166,10 +185,10 @@ class UserModel {
         'weeklyLeague': weeklyLeague,
         'powerUps': powerUps,
         'todayCoinsEarned': todayCoinsEarned,
-        'lastCoinResetDate': lastCoinResetDate,
-        'lastDailyLoginRewardDate': lastDailyLoginRewardDate,
+        'lastCoinResetDate': Timestamp.fromDate(lastCoinResetDate),
+        'lastDailyLoginRewardDate': Timestamp.fromDate(lastDailyLoginRewardDate),
         'loginStreak': loginStreak,
-        'lastLoginDate': lastLoginDate,
+        'lastLoginDate': Timestamp.fromDate(lastLoginDate),
         'lastRewardedMatchId': lastRewardedMatchId,
         'lastLeagueRewardClaimed': lastLeagueRewardClaimed,
         'arenaBreakerWins': arenaBreakerWins,
@@ -178,7 +197,10 @@ class UserModel {
         'oneOptionLifelines': oneOptionLifelines,
         'twoOptionLifelines': twoOptionLifelines,
         'rankProtectionMatches': rankProtectionMatches,
+        'rankProtectionActive': rankProtectionActive,
+        'ownedShieldPackage': ownedShieldPackage,
         'lastDailyBonusDate': lastDailyBonusDate != null ? Timestamp.fromDate(lastDailyBonusDate!) : null,
+        'matchesPlayed': matchesPlayed,
       };
 
   UserModel copyWith({
@@ -202,7 +224,7 @@ class UserModel {
     int? wins,
     int? losses,
     int? draws,
-    int? matchesPlayed,
+    int? eloRating,
     DateTime? lastDailyBonusDate,
     List<String>? achievements,
     List<String>? unlockedAvatars,
@@ -215,9 +237,12 @@ class UserModel {
     int? arenaBreakerWins,
     int? arenaBreakerLosses,
     double? averageAccuracy,
+    bool clearSubRank = false,
     int? oneOptionLifelines,
     int? twoOptionLifelines,
     int? rankProtectionMatches,
+    bool? rankProtectionActive,
+    int? ownedShieldPackage,
   }) {
     return UserModel(
       uid: uid,
@@ -237,12 +262,12 @@ class UserModel {
       lastRewardedMatchId: lastRewardedMatchId ?? this.lastRewardedMatchId,
       lastLeagueRewardClaimed: lastLeagueRewardClaimed ?? this.lastLeagueRewardClaimed,
       rank: rank ?? this.rank,
-      subRank: subRank ?? this.subRank,
+      subRank: clearSubRank ? null : (subRank ?? this.subRank),
       rankPoints: rankPoints ?? this.rankPoints,
       wins: wins ?? this.wins,
       losses: losses ?? this.losses,
       draws: draws ?? this.draws,
-      matchesPlayed: matchesPlayed ?? this.matchesPlayed,
+      eloRating: eloRating ?? this.eloRating,
       lastDailyBonusDate: lastDailyBonusDate ?? this.lastDailyBonusDate,
       achievements: achievements ?? this.achievements,
       unlockedAvatars: unlockedAvatars ?? this.unlockedAvatars,
@@ -258,6 +283,8 @@ class UserModel {
       oneOptionLifelines: oneOptionLifelines ?? this.oneOptionLifelines,
       twoOptionLifelines: twoOptionLifelines ?? this.twoOptionLifelines,
       rankProtectionMatches: rankProtectionMatches ?? this.rankProtectionMatches,
+      rankProtectionActive: rankProtectionActive ?? this.rankProtectionActive,
+      ownedShieldPackage: ownedShieldPackage ?? this.ownedShieldPackage,
     );
   }
 }

@@ -34,9 +34,32 @@ class ShopRepository {
           'oneOptionLifelines': FieldValue.increment(oneOptionLifelinesInc),
         if (twoOptionLifelinesInc != null)
           'twoOptionLifelines': FieldValue.increment(twoOptionLifelinesInc),
-        if (rankProtectionMatchesInc != null)
+        if (rankProtectionMatchesInc != null) ...{
           'rankProtectionMatches': FieldValue.increment(rankProtectionMatchesInc),
+        }
       });
     });
+  }
+
+  Future<void> setRankProtectionActive(String userId, bool active) async {
+    final userRef = _firestore.collection('users').doc(userId);
+
+    return _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(userRef);
+      if (!snapshot.exists) return;
+
+      final userData = snapshot.data()!;
+      final currentShieldMatches = userData['rankProtectionMatches'] ?? 0;
+
+      if (active && currentShieldMatches <= 0) {
+        throw Exception('No rank protection shields available');
+      }
+
+      transaction.update(userRef, {'rankProtectionActive': active});
+    });
+  }
+
+  Future<void> activateRankProtection(String userId) async {
+    return setRankProtectionActive(userId, true);
   }
 }

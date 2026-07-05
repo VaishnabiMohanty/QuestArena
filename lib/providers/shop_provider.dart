@@ -52,4 +52,18 @@ class ShopController extends StateNotifier<AsyncValue<void>> {
       rankProtectionMatchesInc: matches,
     ));
   }
+
+  Future<void> activateRankProtection() async {
+    final uid = _userId;
+    if (uid == null) return;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _repository.setRankProtectionActive(uid, true));
+  }
+
+  Future<void> toggleRankProtection(bool active) async {
+    final uid = _userId;
+    if (uid == null) return;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _repository.setRankProtectionActive(uid, active));
+  }
 }

@@ -2,6 +2,8 @@
 // Utility functions for game logic.
 
 import 'dart:math';
+import 'dart:convert';
+import '../../data/models/match_history_model.dart';
 
 class GameUtils {
   // Decodes common HTML entities from the Open Trivia Database
@@ -20,10 +22,56 @@ class GameUtils {
         .replaceAll('&deg;', '°');
   }
 
+  // Generates a unique ID for a question based on its text
+  static String generateQuestionId(String question) {
+    final clean = question.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+    final bytes = utf8.encode(clean);
+    return base64Encode(bytes).replaceAll('=', '').substring(0, min(28, base64Encode(bytes).length));
+  }
+
   // Generates a random 6-character uppercase alphanumeric code
   static String generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars like O, 0, I, 1
     return List.generate(6, (index) => chars[Random().nextInt(chars.length)]).join();
+  }
+
+  // Calculates daily play streak from match history
+  static int calculateDailyStreak(List<MatchModel> history) {
+    if (history.isEmpty) return 0;
+
+    // Get unique days played, sorted descending
+    final dates = history.map((m) {
+      final d = m.timestamp.toLocal();
+      return DateTime(d.year, d.month, d.day);
+    }).toSet().toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    if (dates.isEmpty) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    // If the most recent play wasn't today or yesterday, streak is broken
+    // We use !isAfter(yesterday.subtract(1ms)) to include yesterday exactly
+    if (dates.first.isBefore(yesterday)) {
+      return 0;
+    }
+
+    int streak = 1;
+    for (int i = 0; i < dates.length - 1; i++) {
+      // Check if dates[i] and dates[i+1] are consecutive days
+      final diff = dates[i].difference(dates[i+1]).inDays;
+      if (diff == 1) {
+        streak++;
+      } else if (diff > 1) {
+        // Gap found, streak ends here
+        break;
+      }
+      // if diff == 0, it's the same day, continue
+    }
+
+    return streak;
   }
 
   // Emergency Fallback questions in case Cloud Function fails

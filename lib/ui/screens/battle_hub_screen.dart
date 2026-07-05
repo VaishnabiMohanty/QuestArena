@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
+import '../../providers/user_providers.dart';
+import '../../providers/shop_provider.dart';
 
 // ─── Battle Hub Screen ────────────────────────────────────────────────────────
 // Redesigned version of the battle_screen / battle hub
 // Three mode cards: Ranked Match, Private Duel, Practice
 // Each card has a neon icon, animated on-press scale, staggered entrance
 
-class BattleHubScreen extends StatefulWidget {
+class BattleHubScreen extends ConsumerStatefulWidget {
   final VoidCallback onRankedTap;
   final VoidCallback onPrivateTap;
   final VoidCallback onPracticeTap;
@@ -20,10 +23,10 @@ class BattleHubScreen extends StatefulWidget {
   });
 
   @override
-  State<BattleHubScreen> createState() => _BattleHubScreenState();
+  ConsumerState<BattleHubScreen> createState() => _BattleHubScreenState();
 }
 
-class _BattleHubScreenState extends State<BattleHubScreen>
+class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
     with TickerProviderStateMixin {
   late AnimationController _titleAnim;
   late List<AnimationController> _cardAnims;
@@ -80,10 +83,51 @@ class _BattleHubScreenState extends State<BattleHubScreen>
     }
   }
 
+  Future<void> _confirmToggle(bool newValue) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        title: Text(
+          newValue ? 'ACTIVATE SHIELD?' : 'DEACTIVATE SHIELD?',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          newValue
+              ? 'Use 1 rank protection match for the next match?'
+              : 'Rank points will be deducted normally if you lose.',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: newValue ? AppColors.neonViolet : AppColors.red,
+            ),
+            child: Text(
+              newValue ? 'ACTIVATE' : 'DEACTIVATE',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      ref.read(shopControllerProvider.notifier).toggleRankProtection(newValue);
+    }
+  }
+
   @override
   void dispose() {
     _titleAnim.dispose();
-    for (final c in _cardAnims) c.dispose();
+    for (final c in _cardAnims) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -97,6 +141,10 @@ class _BattleHubScreenState extends State<BattleHubScreen>
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider).value;
+    final isProtectionActive = user?.rankProtectionActive ?? false;
+    final hasShields = (user?.rankProtectionMatches ?? 0) > 0;
+
     return Scaffold(
       backgroundColor: AppColors.bgBase,
       body: SafeArea(
@@ -105,35 +153,52 @@ class _BattleHubScreenState extends State<BattleHubScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Title ────────────────────────────────────────────────────
+              // ── Title + Toggle ──────────────────────────────────────────
               FadeTransition(
                 opacity: _titleAnim,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [AppColors.neonCyan, AppColors.neonViolet],
-                        stops: [0.3, 1.0],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'BATTLE HUB',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 4,
-                          color: Colors.white,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [AppColors.neonCyan, AppColors.neonViolet],
+                            stops: [0.3, 1.0],
+                          ).createShader(bounds),
+                          child: const Text(
+                            'BATTLE HUB',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 4,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Select your challenge',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Select your challenge',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        letterSpacing: 0.5,
-                      ),
+                    _RankProtectionToggle(
+                      isActive: isProtectionActive,
+                      onChanged: hasShields ? (val) => _confirmToggle(val) : (_) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No rank protection shields available. Purchase one in the Shop!'),
+                            backgroundColor: AppColors.neonPink,
+                          ),
+                        );
+                      },
+                      isEnabled: hasShields,
                     ),
                   ],
                 ),
@@ -167,6 +232,46 @@ class _BattleHubScreenState extends State<BattleHubScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Rank Protection Toggle ──────────────────────────────────────────────────
+
+class _RankProtectionToggle extends StatelessWidget {
+  final bool isActive;
+  final ValueChanged<bool> onChanged;
+  final bool isEnabled;
+
+  const _RankProtectionToggle({
+    required this.isActive,
+    required this.onChanged,
+    this.isEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Opacity(
+          opacity: isEnabled ? 1.0 : 0.5,
+          child: Switch.adaptive(
+            value: isActive,
+            onChanged: onChanged,
+            activeTrackColor: AppColors.neonViolet,
+            inactiveTrackColor: AppColors.neonViolet.withValues(alpha: 0.1),
+          ),
+        ),
+        Text(
+          'SHIELD: ${isActive ? 'ON' : 'OFF'}',
+          style: TextStyle(
+            color: isActive ? AppColors.neonViolet : AppColors.textMuted,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
     );
   }
 }

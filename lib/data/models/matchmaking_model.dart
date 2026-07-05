@@ -11,6 +11,8 @@ class MatchmakingModel {
   final String? gameRoomId;
   final int? categoryId;
   final String categoryName;
+  final int eloRating;
+  final int searchRange;
   final DateTime searchStartedAt;
 
   MatchmakingModel({
@@ -23,6 +25,8 @@ class MatchmakingModel {
     this.gameRoomId,
     this.categoryId,
     this.categoryName = 'Mixed / Random',
+    this.eloRating = 1200,
+    this.searchRange = 100,
     required this.searchStartedAt,
   });
 
@@ -37,6 +41,8 @@ class MatchmakingModel {
       gameRoomId: json['gameRoomId'],
       categoryId: json['categoryId'],
       categoryName: json['categoryName'] ?? 'Mixed / Random',
+      eloRating: json['eloRating'] ?? 1200,
+      searchRange: json['searchRange'] ?? 100,
       searchStartedAt: json['searchStartedAt'] != null 
           ? DateTime.parse(json['searchStartedAt']) 
           : DateTime.now(),
@@ -53,6 +59,8 @@ class MatchmakingModel {
     'gameRoomId': gameRoomId,
     'categoryId': categoryId,
     'categoryName': categoryName,
+    'eloRating': eloRating,
+    'searchRange': searchRange,
     'searchStartedAt': searchStartedAt.toIso8601String(),
   };
 }

@@ -80,13 +80,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ),
                   ],
                 ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
-                
+
                 const SizedBox(height: 16),
                 Text(user.username, style: AppTextStyles.headline),
                 Text(user.rank.toUpperCase(), style: AppTextStyles.label.copyWith(color: AppColors.gold, letterSpacing: 2)),
 
                 const SizedBox(height: 12),
-                
+
                 // CHANGE BUTTONS
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -130,7 +130,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 ),
 
                 const SizedBox(height: 24),
-                
+
                 // Stats Summary
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,

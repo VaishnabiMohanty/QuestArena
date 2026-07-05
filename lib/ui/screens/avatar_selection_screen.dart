@@ -310,7 +310,7 @@ class _AvatarGridTile extends StatelessWidget {
 
   Widget _buildAvatarImage() {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.surface,
       ),
