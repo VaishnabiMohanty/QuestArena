@@ -109,7 +109,7 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
                   Text('FRIEND REQUESTS', style: AppTextStyles.label.copyWith(letterSpacing: 2)),
                   const SizedBox(height: 12),
                   ...requests.map((r) {
-                    final data = r.data() as Map<String, dynamic>;
+                    final data = r.data();
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/utils/rank_system.dart';
 import '../../../providers/user_providers.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/guild_providers.dart';
@@ -15,6 +14,13 @@ import '../../widgets/player_profile_dialog.dart';
 import 'edit_profile_screen.dart';
 import '../guild/guild_home_screen.dart';
 import '../guild/guild_dialogs.dart';
+import '../avatar_selection_screen.dart';
+import '../border_selection_screen.dart';
+import '../../../providers/achievement_providers.dart';
+import '../../../data/models/achievement_model.dart';
+import '../../../providers/avatar_providers.dart';
+import '../../../providers/border_providers.dart';
+import '../../../core/errors/result.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -150,6 +156,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                   const SizedBox(height: 32),
                   _buildAnalyticsGrid(user),
                   const SizedBox(height: 32),
+                  _buildAchievementsSection(user.uid),
+                  const SizedBox(height: 32),
                   _ProfileGuildSection(user: user),
                   const SizedBox(height: 32),
                   const _FriendRequestsSection(),
@@ -180,7 +188,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
             title: 'AVATARS',
             icon: Icons.face_rounded,
             color: AppColors.neonCyan,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AvatarCollectionScreen())),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AvatarSelectionScreen())),
           ),
         ),
         const SizedBox(width: 16),
@@ -189,7 +197,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
             title: 'BORDERS',
             icon: Icons.verified_user_rounded,
             color: AppColors.gold,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BorderCollectionScreen())),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BorderSelectionScreen())),
           ),
         ),
       ],
@@ -656,6 +664,42 @@ class _InvitationCard extends ConsumerWidget {
 }
 
 class _StatItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(value, style: AppTextStyles.headline.copyWith(fontSize: 18, color: color)),
+          Text(label, style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomizationCard extends StatelessWidget {
+  final String title;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
