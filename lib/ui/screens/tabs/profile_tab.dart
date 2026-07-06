@@ -27,6 +27,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -116,7 +117,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  SmartAvatar(avatarUrl: user.avatarUrl, size: 120, showGlow: true, showBorder: true),
+                  SmartAvatar(
+                    avatarUrl: user.avatarUrl,
+                    size: 120,
+                    showGlow: true,
+                    showBorder: true,
+                    borderId: user.selectedBorder,
+                  ),
                   const SizedBox(height: 16),
                   Text(user.username.toUpperCase(), style: AppTextStyles.headline.copyWith(fontSize: 26, letterSpacing: 2)),
                   const SizedBox(height: 24),
@@ -136,6 +143,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+                  _buildCustomizationRow(context),
 
                   const SizedBox(height: 32),
                   _buildAnalyticsGrid(user),
@@ -162,6 +172,30 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
     );
   }
 
+  Widget _buildCustomizationRow(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _CustomizationCard(
+            title: 'AVATARS',
+            icon: Icons.face_rounded,
+            color: AppColors.neonCyan,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AvatarCollectionScreen())),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _CustomizationCard(
+            title: 'BORDERS',
+            icon: Icons.verified_user_rounded,
+            color: AppColors.gold,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BorderCollectionScreen())),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAnalyticsGrid(UserModel user) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -183,10 +217,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
             crossAxisSpacing: 16,
             childAspectRatio: 1.7,
             children: [
-              _StatItem(icon: Icons.stars_rounded, label: 'TOTAL XP', value: '${user.xp}', color: AppColors.purple),
+              _StatItem(icon: Icons.military_tech_rounded, label: 'LEVEL', value: '${user.level}', color: AppColors.purple),
+              _StatItem(icon: Icons.stars_rounded, label: 'TOTAL XP', value: '${user.xp}', color: AppColors.neonViolet),
               _StatItem(icon: Icons.monetization_on_rounded, label: 'COINS', value: '${user.coins}', color: AppColors.gold),
               _StatItem(icon: Icons.emoji_events_rounded, label: 'WINS', value: '${user.wins}', color: AppColors.teal),
-              _StatItem(icon: Icons.whatshot_rounded, label: 'STREAK', value: '${user.currentWinStreak}', color: AppColors.red),
+              _StatItem(icon: Icons.my_location_rounded, label: 'ACCURACY', value: '${user.averageAccuracy.toStringAsFixed(1)}%', color: AppColors.neonCyan),
+              _StatItem(icon: Icons.whatshot_rounded, label: 'STREAK', value: '${user.loginStreak}', color: AppColors.red),
             ],
           ),
           const SizedBox(height: 24),
@@ -197,11 +233,91 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
             children: [
               _SimpleStat(label: 'MATCHES', value: '${user.matchesPlayed}'),
               _SimpleStat(label: 'WIN RATE', value: '${user.winRate.toStringAsFixed(1)}%'),
-              _SimpleStat(label: 'DRAWS', value: '${user.draws}'),
+              _SimpleStat(label: 'AB WINS', value: '${user.arenaBreakerWins}'),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAchievementsSection(String uid) {
+    final achievementsAsync = ref.watch(userAchievementsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('ACHIEVEMENTS', style: AppTextStyles.label.copyWith(color: AppColors.gold, fontWeight: FontWeight.w900, letterSpacing: 2)),
+            TextButton.icon(
+              onPressed: _isSyncing ? null : () async {
+                setState(() => _isSyncing = true);
+                try {
+                  // 1. Force refresh user profile from server first
+                  final userRepo = ref.read(userRepositoryProvider);
+                  final auth = ref.read(authStateProvider).value;
+                  if (auth == null) return;
+                  
+                  final userResult = await userRepo.getUserProfile(auth.uid);
+                  if (userResult is Success<UserModel>) {
+                    final freshUser = userResult.data;
+                    
+                    // 2. Run sync with fresh data
+                    await ref.read(achievementServiceProvider).syncAll(freshUser);
+                    
+                    // 3. Sync Avatars & Borders as well
+                    await ref.read(avatarServiceProvider).checkAndUnlockLeagues(freshUser.uid, freshUser.rank);
+                    await ref.read(borderServiceProvider).checkAndUnlockLeagues(freshUser.uid, freshUser.rank);
+                    
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Achievements Synced! Check your list. 🔥'),
+                          backgroundColor: AppColors.teal,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Sync failed: $e'), backgroundColor: AppColors.red),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isSyncing = false);
+                }
+              },
+              icon: _isSyncing 
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                : const Icon(Icons.sync_rounded, size: 16, color: AppColors.gold),
+              label: Text(
+                _isSyncing ? 'SYNCING...' : 'SYNC', 
+                style: AppTextStyles.label.copyWith(color: AppColors.gold, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        achievementsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
+          data: (achievements) {
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: achievements.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _AchievementTile(achievement: achievements[index], uid: uid);
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -541,38 +657,243 @@ class _InvitationCard extends ConsumerWidget {
 
 class _StatItem extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String value;
   final Color color;
-  const _StatItem({required this.icon, required this.label, required this.value, required this.color});
+  final VoidCallback onTap;
+
+  const _CustomizationCard({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.surface),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: AppTextStyles.label.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AchievementTile extends ConsumerWidget {
+  final Achievement achievement;
+  final String uid;
+
+  const _AchievementTile({required this.achievement, required this.uid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isUnlocked = achievement.isUnlocked;
+    final bool isClaimed = achievement.isClaimed;
+    final double progressPercent = (achievement.progress / achievement.target).clamp(0.0, 1.0);
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: isUnlocked ? AppColors.cardBg : AppColors.cardBg.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isClaimed 
+              ? Colors.green.withValues(alpha: 0.5) 
+              : (isUnlocked ? AppColors.gold : AppColors.surface),
+          width: isUnlocked ? 2 : 1,
+        ),
+        boxShadow: isUnlocked && !isClaimed ? [
+          BoxShadow(
+            color: AppColors.gold.withValues(alpha: 0.2),
+            blurRadius: 10,
+            spreadRadius: 1,
+          )
+        ] : null,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 14),
-              const SizedBox(width: 6),
-              Text(label, style: AppTextStyles.label.copyWith(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isUnlocked ? AppColors.gold.withValues(alpha: 0.1) : Colors.black12,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _getIcon(achievement.type),
+                  color: isUnlocked ? AppColors.gold : AppColors.textMuted,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      achievement.title,
+                      style: AppTextStyles.bodyMd.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isUnlocked ? Colors.white : AppColors.textMuted,
+                      ),
+                    ),
+                    Text(
+                      achievement.description,
+                      style: AppTextStyles.label.copyWith(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              if (isClaimed)
+                _buildStatusBadge('CLAIMED', Colors.green)
+              else if (isUnlocked)
+                _buildClaimButton(context, ref)
+              else
+                _buildStatusBadge('LOCKED', AppColors.textMuted),
             ],
           ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(value, style: AppTextStyles.headline.copyWith(fontSize: 18, color: Colors.white)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progressPercent,
+                    backgroundColor: AppColors.surface,
+                    color: isUnlocked ? AppColors.gold : AppColors.purple,
+                    minHeight: 6,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${achievement.progress}/${achievement.target}',
+                style: AppTextStyles.label.copyWith(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
+          const SizedBox(height: 8),
+          _buildRewardsInfo(),
         ],
       ),
     );
+  }
+
+  Widget _buildRewardsInfo() {
+    final reward = achievement.reward;
+    List<Widget> rewards = [];
+
+    if (reward.coins > 0) {
+      rewards.add(_rewardItem(Icons.monetization_on_rounded, '${reward.coins}', AppColors.gold));
+    }
+    if (reward.xp > 0) {
+      rewards.add(_rewardItem(Icons.stars_rounded, '${reward.xp} XP', AppColors.purple));
+    }
+    if (reward.avatarId != null) {
+      rewards.add(_rewardItem(Icons.person_rounded, 'AVATAR', AppColors.neonCyan));
+    }
+    if (reward.borderId != null) {
+      rewards.add(_rewardItem(Icons.verified_user_rounded, 'BORDER', AppColors.gold));
+    }
+
+    return Row(
+      children: [
+        Text('REWARD: ', style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.textMuted)),
+        ...rewards.expand((w) => [w, const SizedBox(width: 8)]).toList()..removeLast(),
+      ],
+    );
+  }
+
+  Widget _rewardItem(IconData icon, String text, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(text, style: AppTextStyles.label.copyWith(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildClaimButton(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      height: 32,
+      child: ElevatedButton(
+        onPressed: () async {
+          final result = await ref.read(achievementServiceProvider).claimReward(uid, achievement.id);
+          if (result is Failure && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to claim: ${result.error.message}'), backgroundColor: AppColors.red),
+            );
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.gold,
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+        ),
+        child: const Text('CLAIM'),
+      ),
+    );
+  }
+
+  IconData _getIcon(AchievementType type) {
+    switch (type) {
+      case AchievementType.matchesPlayed:
+        return Icons.sports_esports_rounded;
+      case AchievementType.matchesWon:
+        return Icons.emoji_events_rounded;
+      case AchievementType.questionsCorrect:
+        return Icons.psychology_rounded;
+      case AchievementType.perfectScores:
+        return Icons.star_rounded;
+      case AchievementType.loginStreak:
+        return Icons.whatshot_rounded;
+      case AchievementType.rankReached:
+        return Icons.workspace_premium_rounded;
+      case AchievementType.winStreak:
+        return Icons.flash_on_rounded;
+      case AchievementType.levelReached:
+        return Icons.military_tech_rounded;
+      case AchievementType.accuracy:
+        return Icons.my_location_rounded;
+      case AchievementType.arenaBreakerWins:
+        return Icons.shield_rounded;
+    }
   }
 }
 
@@ -617,7 +938,11 @@ class _FriendRequestsSection extends ConsumerWidget {
                 decoration: BoxDecoration(color: AppColors.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.surface)),
                 child: Row(
                   children: [
-                    SmartAvatar(avatarUrl: data['senderAvatar'], size: 40),
+                    SmartAvatar(
+                      avatarUrl: data['senderAvatar'],
+                      size: 40,
+                      borderId: data['senderBorder'],
+                    ),
                     const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(data['senderUsername'], style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)), Text('Sent a request', style: AppTextStyles.label.copyWith(fontSize: 10))])),
                     IconButton(onPressed: () => ref.read(friendsRepositoryProvider).acceptFriendRequest(request.id, data), icon: const Icon(Icons.check_circle_rounded, color: AppColors.teal)),

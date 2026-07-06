@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'character_avatar.dart';
 import '../../core/constants/colors.dart';
+import '../../core/constants/borders.dart';
+import '../../core/utils/rank_system.dart';
 
 class SmartAvatar extends StatelessWidget {
   final String? avatarUrl;
@@ -9,6 +11,7 @@ class SmartAvatar extends StatelessWidget {
   final double size;
   final bool showGlow;
   final bool showBorder;
+  final String? borderId;
 
   const SmartAvatar({
     super.key,
@@ -17,6 +20,7 @@ class SmartAvatar extends StatelessWidget {
     this.size = 56,
     this.showGlow = false,
     this.showBorder = true,
+    this.borderId,
   });
 
   static String getAvatarIdForRank(String? rank) {
@@ -49,27 +53,87 @@ class SmartAvatar extends StatelessWidget {
         ? avatarUrl
         : (rank != null ? getAvatarIdForRank(rank) : null);
 
+    Widget avatarWidget;
+
     if (effectiveAvatar == null || effectiveAvatar.isEmpty) {
-      return _buildFallback();
+      avatarWidget = _buildFallback();
+    } else {
+      // Check if it's a character ID (e.g., 'f1', 'm2')
+      final character = kCharacters.cast<CharacterData?>().firstWhere(
+            (c) => c?.id == effectiveAvatar,
+            orElse: () => null,
+          );
+
+      if (character != null) {
+        avatarWidget = CharacterAvatar(
+          character: character,
+          size: size,
+          showGlow: showGlow,
+          showBorder: showBorder,
+        );
+      } else {
+        // Otherwise, assume it's a network URL
+        avatarWidget = _buildNetworkAvatar(effectiveAvatar);
+      }
     }
 
-    // Check if it's a character ID (e.g., 'f1', 'm2')
-    final character = kCharacters.cast<CharacterData?>().firstWhere(
-          (c) => c?.id == effectiveAvatar,
-          orElse: () => null,
-        );
+    if (borderId != null && borderId != 'no_border') {
+      final border = AppBorders.getBorderById(borderId);
+      final borderColor = RankSystem.getRankColor(border.requiredLeague);
 
-    if (character != null) {
-      return CharacterAvatar(
-        character: character,
-        size: size,
-        showGlow: showGlow,
-        showBorder: showBorder,
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            // Procedural glow behind the avatar
+            Container(
+              width: size * 0.95,
+              height: size * 0.95,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: borderColor.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            avatarWidget,
+            Positioned(
+              width: size * 1.15,
+              height: size * 1.15,
+              child: IgnorePointer(
+                child: Image.asset(
+                  border.image,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Procedural Fallback if image asset is missing (fixes the red cross)
+                    return Container(
+                      width: size * 1.15,
+                      height: size * 1.15,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: borderColor.withValues(alpha: 0.8),
+                          width: size * 0.06,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
-    // Otherwise, assume it's a network URL
-    return _buildNetworkAvatar(effectiveAvatar);
+    return avatarWidget;
   }
 
   Widget _buildNetworkAvatar(String url) {

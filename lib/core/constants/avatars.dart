@@ -25,7 +25,57 @@ class AppAvatars {
   AppAvatars._();
 
   static const List<AvatarModel> avatars = [
-    // --- BRONZE (Starting) ---
+    // --- DEFAULT (Unranked) ---
+    AvatarModel(
+      id: 'default_m1',
+      name: 'Veer',
+      image: 'm1',
+      gender: AvatarGender.male,
+      requiredLeague: 'Unranked',
+      style: 'Casual',
+    ),
+    AvatarModel(
+      id: 'default_f1',
+      name: 'Nova',
+      image: 'f1',
+      gender: AvatarGender.female,
+      requiredLeague: 'Unranked',
+      style: 'Casual',
+    ),
+    AvatarModel(
+      id: 'default_f2',
+      name: 'Arya',
+      image: 'f2',
+      gender: AvatarGender.female,
+      requiredLeague: 'Unranked',
+      style: 'Casual',
+    ),
+    AvatarModel(
+      id: 'default_m2',
+      name: 'Zane',
+      image: 'm2',
+      gender: AvatarGender.male,
+      requiredLeague: 'Unranked',
+      style: 'Casual',
+    ),
+    AvatarModel(
+      id: 'default_f3',
+      name: 'Lyra',
+      image: 'f3',
+      gender: AvatarGender.female,
+      requiredLeague: 'Unranked',
+      style: 'Casual',
+    ),
+    AvatarModel(
+      id: 'default_m3',
+      name: 'Ryo',
+      image: 'm3',
+      gender: AvatarGender.male,
+      requiredLeague: 'Unranked',
+      style: 'Casual',
+    ),
+
+    // --- BRONZE ---
     AvatarModel(
       id: 'bronze_m1',
       name: 'Felix',
@@ -57,38 +107,6 @@ class AppAvatars {
       gender: AvatarGender.female,
       requiredLeague: 'Bronze',
       style: 'Gamer',
-    ),
-    AvatarModel(
-      id: 'bronze_m3',
-      name: 'Max',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Max',
-      gender: AvatarGender.male,
-      requiredLeague: 'Bronze',
-      style: 'Professional',
-    ),
-    AvatarModel(
-      id: 'bronze_f3',
-      name: 'Cookie',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Cookie',
-      gender: AvatarGender.female,
-      requiredLeague: 'Bronze',
-      style: 'Casual',
-    ),
-    AvatarModel(
-      id: 'bronze_m4',
-      name: 'Leo',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Leo',
-      gender: AvatarGender.male,
-      requiredLeague: 'Bronze',
-      style: 'Gamer',
-    ),
-    AvatarModel(
-      id: 'bronze_f4',
-      name: 'Mia',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Mia',
-      gender: AvatarGender.female,
-      requiredLeague: 'Bronze',
-      style: 'Sporty',
     ),
 
     // --- SILVER ---
@@ -124,38 +142,6 @@ class AppAvatars {
       requiredLeague: 'Silver',
       style: 'Professional',
     ),
-    AvatarModel(
-      id: 'silver_m3',
-      name: 'Oliver',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Oliver',
-      gender: AvatarGender.male,
-      requiredLeague: 'Silver',
-      style: 'Casual',
-    ),
-    AvatarModel(
-      id: 'silver_f3',
-      name: 'Zoe',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Zoe',
-      gender: AvatarGender.female,
-      requiredLeague: 'Silver',
-      style: 'Gamer',
-    ),
-    AvatarModel(
-      id: 'silver_m4',
-      name: 'Finn',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Finn',
-      gender: AvatarGender.male,
-      requiredLeague: 'Silver',
-      style: 'Professional',
-    ),
-    AvatarModel(
-      id: 'silver_f4',
-      name: 'Maya',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Maya',
-      gender: AvatarGender.female,
-      requiredLeague: 'Silver',
-      style: 'Sporty',
-    ),
 
     // --- GOLD ---
     AvatarModel(
@@ -189,38 +175,6 @@ class AppAvatars {
       gender: AvatarGender.female,
       requiredLeague: 'Gold',
       style: 'Casual',
-    ),
-    AvatarModel(
-      id: 'gold_m3',
-      name: 'Oscar',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Oscar',
-      gender: AvatarGender.male,
-      requiredLeague: 'Gold',
-      style: 'Gamer',
-    ),
-    AvatarModel(
-      id: 'gold_f3',
-      name: 'Bella',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Bella',
-      gender: AvatarGender.female,
-      requiredLeague: 'Gold',
-      style: 'Professional',
-    ),
-    AvatarModel(
-      id: 'gold_m4',
-      name: 'Hugo',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Hugo',
-      gender: AvatarGender.male,
-      requiredLeague: 'Gold',
-      style: 'Fantasy',
-    ),
-    AvatarModel(
-      id: 'gold_f4',
-      name: 'Iris',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Iris',
-      gender: AvatarGender.female,
-      requiredLeague: 'Gold',
-      style: 'Gamer',
     ),
 
     // --- PLATINUM ---
@@ -256,38 +210,6 @@ class AppAvatars {
       requiredLeague: 'Platinum',
       style: 'Professional',
     ),
-    AvatarModel(
-      id: 'plat_m3',
-      name: 'Rex',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Rex',
-      gender: AvatarGender.male,
-      requiredLeague: 'Platinum',
-      style: 'Fantasy',
-    ),
-    AvatarModel(
-      id: 'plat_f3',
-      name: 'Ruby',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Ruby',
-      gender: AvatarGender.female,
-      requiredLeague: 'Platinum',
-      style: 'Gamer',
-    ),
-    AvatarModel(
-      id: 'plat_m4',
-      name: 'Duke',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Duke',
-      gender: AvatarGender.male,
-      requiredLeague: 'Platinum',
-      style: 'Professional',
-    ),
-    AvatarModel(
-      id: 'plat_f4',
-      name: 'Sasha',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Sasha',
-      gender: AvatarGender.female,
-      requiredLeague: 'Platinum',
-      style: 'Sporty',
-    ),
 
     // --- DIAMOND ---
     AvatarModel(
@@ -322,37 +244,66 @@ class AppAvatars {
       requiredLeague: 'Diamond',
       style: 'Professional',
     ),
+
+    // --- MASTER ---
     AvatarModel(
-      id: 'diamond_m3',
-      name: 'Thor',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Thor',
+      id: 'master_m1',
+      name: 'Ares',
+      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Ares',
       gender: AvatarGender.male,
-      requiredLeague: 'Diamond',
+      requiredLeague: 'Master',
       style: 'Fantasy',
     ),
     AvatarModel(
-      id: 'diamond_f3',
-      name: 'Freya',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Freya',
+      id: 'master_f1',
+      name: 'Artemis',
+      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Artemis',
       gender: AvatarGender.female,
-      requiredLeague: 'Diamond',
+      requiredLeague: 'Master',
+      style: 'Fantasy',
+    ),
+
+    // --- CHAMPION ---
+    AvatarModel(
+      id: 'champ_m1',
+      name: 'Hades',
+      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Hades',
+      gender: AvatarGender.male,
+      requiredLeague: 'Champion',
       style: 'Fantasy',
     ),
     AvatarModel(
-      id: 'diamond_m4',
-      name: 'Odin',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Odin',
+      id: 'champ_f1',
+      name: 'Persephone',
+      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Persephone',
+      gender: AvatarGender.female,
+      requiredLeague: 'Champion',
+      style: 'Fantasy',
+    ),
+
+    // --- LEGEND ---
+    AvatarModel(
+      id: 'legend_m1',
+      name: 'Kronos',
+      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Kronos',
       gender: AvatarGender.male,
-      requiredLeague: 'Diamond',
-      style: 'Professional',
+      requiredLeague: 'Legend',
+      style: 'Fantasy',
     ),
     AvatarModel(
-      id: 'diamond_f4',
-      name: 'Frigg',
-      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Frigg',
+      id: 'legend_f1',
+      name: 'Gaia',
+      image: 'https://api.dicebear.com/7.x/avataaars/png?seed=Gaia',
       gender: AvatarGender.female,
-      requiredLeague: 'Diamond',
+      requiredLeague: 'Legend',
       style: 'Fantasy',
     ),
   ];
+
+  static AvatarModel getAvatarByImage(String image) {
+    return avatars.firstWhere(
+      (a) => a.image == image,
+      orElse: () => avatars[0],
+    );
+  }
 }

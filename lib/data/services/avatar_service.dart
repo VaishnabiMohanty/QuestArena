@@ -1,9 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/avatars.dart';
 import '../models/user_model.dart';
+import '../../providers/unlock_providers.dart';
 
 class AvatarService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final Ref _ref;
+
+  AvatarService(this._ref);
 
   /// Checks if the user should unlock any new avatars based on their current league.
   /// This should be called whenever the user's league changes.
@@ -22,9 +27,12 @@ class AvatarService {
       }).map((a) => a.image).toList();
 
       bool changed = false;
+      List<String> newlyUnlocked = [];
+
       for (final image in eligibleAvatars) {
         if (currentlyUnlocked.add(image)) {
           changed = true;
+          newlyUnlocked.add(image);
         }
       }
 
@@ -32,12 +40,15 @@ class AvatarService {
         transaction.update(userRef, {
           'unlockedAvatars': currentlyUnlocked.toList(),
         });
+        
+        if (newlyUnlocked.isNotEmpty) {
+          _ref.read(lastUnlockedAvatarProvider.notifier).state = newlyUnlocked.first;
+        }
       }
     });
   }
 
   /// Determines if a league qualifies for avatars of a target league.
-  /// Matches the order in lib/core/utils/rank_system.dart
   static bool _isLeagueEligible(String currentLeague, String targetLeague) {
     const leaguePriority = {
       'Unranked': 0,
@@ -59,7 +70,10 @@ class AvatarService {
 
   /// Manually select a new avatar if it's unlocked.
   Future<void> selectAvatar(String uid, String avatarImage, List<String> unlockedAvatars) async {
-    if (!unlockedAvatars.contains(avatarImage)) {
+    final avatar = AppAvatars.avatars.firstWhere((a) => a.image == avatarImage, orElse: () => AppAvatars.avatars[0]);
+    final isDefault = avatar.requiredLeague == 'Unranked';
+
+    if (!isDefault && !unlockedAvatars.contains(avatarImage)) {
       throw Exception("This avatar is locked. Reach the required league to unlock.");
     }
 

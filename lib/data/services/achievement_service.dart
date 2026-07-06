@@ -7,6 +7,8 @@ import '../models/achievement_model.dart';
 import '../repositories/achievement_repository.dart';
 import '../../core/errors/result.dart';
 import '../../providers/achievement_providers.dart';
+import '../../providers/user_providers.dart';
+import '../../core/utils/rank_system.dart';
 
 class AchievementService {
   final AchievementRepository _repository;
@@ -20,6 +22,9 @@ class AchievementService {
     required bool isWin,
     required int correctAnswers,
     required int totalQuestions,
+    int? currentWinStreak,
+    double? averageAccuracy,
+    bool isArenaBreaker = false,
   }) async {
     // 1. Matches Played
     await _updateByType(uid, AchievementType.matchesPlayed, 1);
@@ -27,40 +32,105 @@ class AchievementService {
     // 2. Matches Won
     if (isWin) {
       await _updateByType(uid, AchievementType.matchesWon, 1);
+      
+      // 5. Win Streak (Always sync against both current and highest for maximum reliability)
+      if (currentWinStreak != null && currentWinStreak > 0) {
+        await _syncByType(uid, AchievementType.winStreak, currentWinStreak);
+      }
+      
+      // Fetch the updated user profile within the service to get the absolute highest streak
+      final userResult = await _ref.read(userRepositoryProvider).getUserProfile(uid);
+      if (userResult is Success<UserModel>) {
+        await _syncByType(uid, AchievementType.winStreak, userResult.data.highestWinStreak);
+      }
+
+      // Arena Breaker Wins
+      if (isArenaBreaker) {
+        await _updateByType(uid, AchievementType.arenaBreakerWins, 1);
+      }
     }
 
     // 3. Questions Correct
     if (correctAnswers > 0) {
       await _updateByType(uid, AchievementType.questionsCorrect, correctAnswers);
     }
-
-    // 4. Perfect Scores (5/5)
-    if (correctAnswers == 5 && totalQuestions == 5) {
+    
+    // 4. Perfect Scores
+    if (correctAnswers == totalQuestions && totalQuestions > 0) {
       await _updateByType(uid, AchievementType.perfectScores, 1);
+    }
+
+    // Accuracy
+    if (averageAccuracy != null && averageAccuracy > 0) {
+      await _syncByType(uid, AchievementType.accuracy, averageAccuracy.toInt());
     }
   }
 
   /// Updates progress for login-related achievements.
   Future<void> updateLoginStreakProgress(String uid, int streak) async {
-    // For login streak, we sync to the current absolute streak value.
     if (streak >= 1) {
       await _syncByType(uid, AchievementType.loginStreak, streak);
     }
   }
 
+  /// Checks for rank-based achievements.
+  Future<void> updateRankProgress(String uid, String rank) async {
+    final rankIndex = RankSystem.ranks.indexOf(rank);
+    if (rankIndex >= 1) { // 1 is Bronze
+      await _syncByType(uid, AchievementType.rankReached, rankIndex);
+    }
+  }
+
+  /// Updates progress for level-based achievements.
+  Future<void> updateLevelProgress(String uid, int level) async {
+    if (level >= 1) {
+      await _syncByType(uid, AchievementType.levelReached, level);
+    }
+  }
+
   /// Syncs all possible achievements based on current user stats.
   Future<void> syncAll(UserModel user) async {
-    // 1. Matches Played
+    print('Syncing achievements for user: ${user.uid}');
+    print('Stats: wins=${user.wins}, matches=${user.matchesPlayed}, streak=${user.highestWinStreak}');
+
+    // Matches Played
     await _syncByType(user.uid, AchievementType.matchesPlayed, user.matchesPlayed);
     
-    // 2. Matches Won
+    // Matches Won
     await _syncByType(user.uid, AchievementType.matchesWon, user.wins);
     
-    // 3. Login Streak
+    // Login Streak
     await _syncByType(user.uid, AchievementType.loginStreak, user.loginStreak);
     
-    // Note: Accuracy and Perfect Scores aren't fully syncable without 
-    // total correct answers and perfect match counts in UserModel.
+    // Win Streak
+    await _syncByType(user.uid, AchievementType.winStreak, user.highestWinStreak);
+    
+    // Rank
+    await updateRankProgress(user.uid, user.rank);
+
+    // Level
+    await updateLevelProgress(user.uid, user.level);
+
+    // Accuracy
+    await _syncByType(user.uid, AchievementType.accuracy, user.averageAccuracy.toInt());
+
+    // Questions Correct
+    await _syncByType(user.uid, AchievementType.questionsCorrect, user.totalQuestionsCorrect);
+
+    // Perfect Scores
+    await _syncByType(user.uid, AchievementType.perfectScores, user.totalPerfectScores);
+
+    // Arena Breaker Wins
+    await _syncByType(user.uid, AchievementType.arenaBreakerWins, user.arenaBreakerWins);
+    
+    print('Achievement sync complete.');
+  }
+
+  Future<Result<void>> claimReward(String uid, String achievementId) async {
+    return await _repository.claimAchievementReward(
+      uid: uid,
+      achievementId: achievementId,
+    );
   }
 
   Future<void> _syncByType(String uid, AchievementType type, int absoluteValue) async {
@@ -73,10 +143,12 @@ class AchievementService {
         absoluteProgress: absoluteValue,
       );
 
-      if (result case Success(data: final achievement)) {
-        if (achievement != null) {
-          _onAchievementUnlocked(achievement);
+      if (result is Success<Achievement?>) {
+        if (result.data != null) {
+          _onAchievementUnlocked(result.data!);
         }
+      } else if (result is Failure) {
+        print('Error syncing achievement ${def['id']}: ${(result as Failure).error.message}');
       }
     }
   }
@@ -91,9 +163,9 @@ class AchievementService {
         increment: increment,
       );
 
-      if (result case Success(data: final achievement)) {
-        if (achievement != null) {
-          _onAchievementUnlocked(achievement);
+      if (result is Success<Achievement?>) {
+        if (result.data != null) {
+          _onAchievementUnlocked(result.data!);
         }
       }
     }

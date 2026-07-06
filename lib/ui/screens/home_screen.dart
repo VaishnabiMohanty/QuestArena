@@ -6,6 +6,8 @@ import '../../providers/streak_providers.dart';
 import '../../providers/achievement_providers.dart';
 import '../../providers/avatar_providers.dart';
 import '../../providers/border_providers.dart';
+import '../../providers/unlock_providers.dart';
+import '../../core/constants/avatars.dart';
 import '../../core/constants/borders.dart';
 import '../../core/errors/result.dart';
 import 'tabs/dashboard_tab.dart';
@@ -14,6 +16,7 @@ import 'tabs/leaderboard_tab.dart';
 import 'tabs/profile_tab.dart';
 import '../widgets/streak_reward_popup.dart';
 import '../widgets/achievement_popup.dart';
+import '../widgets/unlock_popup.dart';
 import '../widgets/weekly_reward_popup.dart';
 import '../../providers/navigation_providers.dart';
 
@@ -85,8 +88,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // 1. Sync Achievements (Retroactive)
     await ref.read(achievementServiceProvider).syncAll(user);
 
-    // 2. Sync Avatars (Retroactive based on Rank)
+    // 2. Sync Avatars & Borders (Retroactive based on Rank)
     await ref.read(avatarServiceProvider).checkAndUnlockLeagues(user.uid, user.rank);
+    await ref.read(borderServiceProvider).checkAndUnlockLeagues(user.uid, user.rank);
   }
 
   void _checkDailyReward() async {
@@ -145,6 +149,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (next.value != null) {
         if (!_checkedDailyReward) _checkDailyReward();
         if (!_syncedRetroactive) _syncRetroactiveData();
+      }
+    });
+
+    // Listen for borders
+    ref.listen(lastUnlockedBorderProvider, (previous, next) {
+      if (next != null) {
+        final border = AppBorders.getBorderById(next);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => UnlockPopup(
+            title: 'New Profile Border',
+            name: border.name,
+            borderId: border.id,
+            onDismiss: () {
+              Navigator.pop(context);
+              ref.read(lastUnlockedBorderProvider.notifier).state = null;
+            },
+          ),
+        );
+      }
+    });
+
+    // Listen for avatars
+    ref.listen(lastUnlockedAvatarProvider, (previous, next) {
+      if (next != null) {
+        final avatar = AppAvatars.getAvatarByImage(next);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => UnlockPopup(
+            title: 'New Avatar Unlocked',
+            name: avatar.name,
+            image: avatar.image,
+            onDismiss: () {
+              Navigator.pop(context);
+              ref.read(lastUnlockedAvatarProvider.notifier).state = null;
+            },
+          ),
+        );
       }
     });
 

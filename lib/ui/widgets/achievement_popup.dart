@@ -79,24 +79,7 @@ class AchievementPopup extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Reward Section
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.monetization_on_rounded, color: AppColors.gold, size: 24),
-                  const SizedBox(width: 12),
-                  Text(
-                    '+${achievement.rewardCoins} COINS',
-                    style: AppTextStyles.headline.copyWith(color: AppColors.gold, fontSize: 20),
-                  ),
-                ],
-              ),
-            ).animate().scale(delay: 600.ms, curve: Curves.elasticOut),
+            _buildRewardSection(),
 
             const SizedBox(height: 40),
 
@@ -113,6 +96,53 @@ class AchievementPopup extends StatelessWidget {
           ],
         ),
       ).animate().scale(curve: Curves.elasticOut, duration: 800.ms).fadeIn(),
+    );
+  }
+
+  Widget _buildRewardSection() {
+    final reward = achievement.reward;
+    List<Widget> rewardItems = [];
+
+    if (reward.coins > 0) {
+      rewardItems.add(_rewardItem(Icons.monetization_on_rounded, '+${reward.coins} COINS', AppColors.gold));
+    }
+    if (reward.xp > 0) {
+      rewardItems.add(_rewardItem(Icons.stars_rounded, '+${reward.xp} XP', AppColors.purple));
+    }
+    if (reward.avatarId != null) {
+      rewardItems.add(_rewardItem(Icons.person_rounded, 'NEW AVATAR', AppColors.neonCyan));
+    }
+    if (reward.borderId != null) {
+      rewardItems.add(_rewardItem(Icons.verified_user_rounded, 'NEW BORDER', AppColors.gold));
+    }
+
+    return Column(
+      children: rewardItems.map((item) => Padding(
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: item,
+      )).toList(),
+    ).animate().scale(delay: 600.ms, curve: Curves.elasticOut);
+  }
+
+  Widget _rewardItem(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: AppTextStyles.headline.copyWith(color: color, fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 }

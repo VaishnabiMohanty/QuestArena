@@ -255,7 +255,11 @@ class _LeaderboardItem extends StatelessWidget {
               width: 30,
               child: Text('#$rank', style: AppTextStyles.headline.copyWith(fontSize: 14, color: rankColor)),
             ),
-            SmartAvatar(avatarUrl: player.avatarUrl, size: 44),
+            SmartAvatar(
+              avatarUrl: player.avatarUrl,
+              size: 44,
+              borderId: player.selectedBorder,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

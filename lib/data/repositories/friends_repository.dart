@@ -20,6 +20,7 @@ class FriendsRepository {
       'senderUsername': sender.username,
       'receiverUsername': receiverUsername,
       'senderAvatar': sender.avatarUrl,
+      'senderBorder': sender.selectedBorder,
       'receiverAvatar': receiverAvatar,
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),

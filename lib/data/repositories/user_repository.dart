@@ -225,6 +225,8 @@ class UserRepository {
           'weeklyMatchesPlayed': weeklyMatches,
           'arenaBreakerWins': abWins,
           'arenaBreakerLosses': abLosses,
+          'totalQuestionsCorrect': user.totalQuestionsCorrect + (playerScore ~/ 10),
+          'totalPerfectScores': user.totalPerfectScores + (playerScore >= 50 ? 1 : 0),
         });
 
         // 7. Match History Record

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/repositories/border_repository.dart';
-import '../data/services/border_service.dart';
-import 'user_providers.dart';
+import 'package:questarena/data/repositories/border_repository.dart';
+import 'package:questarena/data/services/border_service.dart';
+import 'package:questarena/providers/user_providers.dart';
 
 final borderRepositoryProvider = Provider<BorderRepository>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
@@ -10,7 +10,7 @@ final borderRepositoryProvider = Provider<BorderRepository>((ref) {
 
 final borderServiceProvider = Provider<BorderService>((ref) {
   final repository = ref.watch(borderRepositoryProvider);
-  return BorderService(repository);
+  return BorderService(repository: repository, ref: ref);
 });
 
 final availableBordersProvider = Provider((ref) {

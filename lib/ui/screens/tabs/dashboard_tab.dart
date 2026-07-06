@@ -122,7 +122,12 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  SmartAvatar(avatarUrl: user.avatarUrl, size: 70, showGlow: true),
+                  SmartAvatar(
+                    avatarUrl: user.avatarUrl,
+                    size: 70,
+                    showGlow: true,
+                    borderId: user.selectedBorder,
+                  ),
                   RankBadge(rank: user.rank, subRank: user.subRank, size: 28),
                 ],
               ),

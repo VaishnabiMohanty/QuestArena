@@ -40,6 +40,24 @@ class AppBorders {
       image: 'assets/borders/diamond_border.png',
       requiredLeague: 'Diamond',
     ),
+    BorderModel(
+      id: 'master_border',
+      name: 'Master Border',
+      image: 'assets/borders/master_border.png',
+      requiredLeague: 'Master',
+    ),
+    BorderModel(
+      id: 'champion_border',
+      name: 'Champion Border',
+      image: 'assets/borders/champion_border.png',
+      requiredLeague: 'Champion',
+    ),
+    BorderModel(
+      id: 'legend_border',
+      name: 'Legend Border',
+      image: 'assets/borders/legend_border.png',
+      requiredLeague: 'Legend',
+    ),
   ];
 
   static BorderModel getBorderById(String? id) {

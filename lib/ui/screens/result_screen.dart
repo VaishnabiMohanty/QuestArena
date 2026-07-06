@@ -12,11 +12,14 @@ import '../../../providers/user_providers.dart';
 import '../../../providers/game_providers.dart';
 import '../../../data/models/game_room_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/errors/result.dart';
 import '../widgets/victory_card.dart';
 import '../widgets/smart_avatar.dart';
 import '../widgets/neon_swirl_background.dart';
 import '../../../providers/navigation_providers.dart';
 import '../../../providers/achievement_providers.dart';
+import '../../../providers/avatar_providers.dart';
+import '../../../providers/border_providers.dart';
 import '../../../providers/guild_providers.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
@@ -108,12 +111,31 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       );
 
       // Update Achievements
-      await ref.read(achievementServiceProvider).processMatchEnd(
-        uid: currentUser.uid,
-        isWin: isWinner,
-        correctAnswers: myScore ~/ 10,
-        totalQuestions: widget.room.questions.length,
-      );
+      final updatedUserResult = await ref.read(userRepositoryProvider).getUserProfile(currentUser.uid);
+      if (updatedUserResult is Success<UserModel>) {
+        final updatedUser = updatedUserResult.data;
+        await ref.read(achievementServiceProvider).processMatchEnd(
+          uid: currentUser.uid,
+          isWin: isWinner,
+          correctAnswers: myScore ~/ 10,
+          totalQuestions: widget.room.questions.length,
+          currentWinStreak: updatedUser.currentWinStreak,
+          averageAccuracy: updatedUser.averageAccuracy,
+          isArenaBreaker: widget.room.isArenaBreaker,
+        );
+        await ref.read(achievementServiceProvider).updateRankProgress(
+          currentUser.uid,
+          updatedUser.rank,
+        );
+        await ref.read(achievementServiceProvider).updateLevelProgress(
+          currentUser.uid,
+          updatedUser.level,
+        );
+
+        // Sync Avatars and Borders if rank changed or just to be safe
+        await ref.read(avatarServiceProvider).checkAndUnlockLeagues(currentUser.uid, updatedUser.rank);
+        await ref.read(borderServiceProvider).checkAndUnlockLeagues(currentUser.uid, updatedUser.rank);
+      }
 
       if (mounted) setState(() => _rewardsClaimed = true);
     } catch (e) {

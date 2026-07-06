@@ -9,6 +9,41 @@ enum AchievementType {
   questionsCorrect,
   perfectScores,
   loginStreak,
+  rankReached,
+  winStreak,
+  levelReached,
+  accuracy,
+  arenaBreakerWins,
+}
+
+class AchievementReward {
+  final int coins;
+  final int xp;
+  final String? avatarId; // Will store the image URL to match existing system
+  final String? borderId;
+
+  const AchievementReward({
+    this.coins = 0,
+    this.xp = 0,
+    this.avatarId,
+    this.borderId,
+  });
+
+  factory AchievementReward.fromJson(Map<String, dynamic> json) {
+    return AchievementReward(
+      coins: json['coins'] ?? 0,
+      xp: json['xp'] ?? 0,
+      avatarId: json['avatarId'],
+      borderId: json['borderId'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'coins': coins,
+    'xp': xp,
+    if (avatarId != null) 'avatarId': avatarId,
+    if (borderId != null) 'borderId': borderId,
+  };
 }
 
 class Achievement {
@@ -18,9 +53,11 @@ class Achievement {
   final AchievementType type;
   final int target;
   final int progress;
-  final int rewardCoins;
+  final AchievementReward reward;
   final bool isUnlocked;
+  final bool isClaimed;
   final DateTime? unlockedAt;
+  final DateTime? claimedAt;
 
   Achievement({
     required this.id,
@@ -29,12 +66,21 @@ class Achievement {
     required this.type,
     required this.target,
     this.progress = 0,
-    required this.rewardCoins,
+    required this.reward,
     this.isUnlocked = false,
+    this.isClaimed = false,
     this.unlockedAt,
+    this.claimedAt,
   });
 
   factory Achievement.fromJson(Map<String, dynamic> json, Map<String, dynamic> definition) {
+    DateTime? parseDateTime(dynamic value) {
+      if (value == null) return null;
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return null;
+    }
+
     return Achievement(
       id: json['id'] ?? definition['id'],
       title: definition['title'],
@@ -42,11 +88,11 @@ class Achievement {
       type: definition['type'],
       target: definition['target'],
       progress: json['progress'] ?? 0,
-      rewardCoins: definition['rewardCoins'],
+      reward: AchievementReward.fromJson(definition['reward'] ?? {}),
       isUnlocked: json['isUnlocked'] ?? false,
-      unlockedAt: json['unlockedAt'] != null 
-          ? (json['unlockedAt'] as Timestamp).toDate() 
-          : null,
+      isClaimed: json['isClaimed'] ?? false,
+      unlockedAt: parseDateTime(json['unlockedAt']),
+      claimedAt: parseDateTime(json['claimedAt']),
     );
   }
 
@@ -54,13 +100,17 @@ class Achievement {
     'id': id,
     'progress': progress,
     'isUnlocked': isUnlocked,
-    'unlockedAt': unlockedAt != null ? Timestamp.fromDate(unlockedAt!) : null,
+    'isClaimed': isClaimed,
+    if (unlockedAt != null) 'unlockedAt': Timestamp.fromDate(unlockedAt!),
+    if (claimedAt != null) 'claimedAt': Timestamp.fromDate(claimedAt!),
   };
 
   Achievement copyWith({
     int? progress,
     bool? isUnlocked,
+    bool? isClaimed,
     DateTime? unlockedAt,
+    DateTime? claimedAt,
   }) {
     return Achievement(
       id: id,
@@ -69,112 +119,159 @@ class Achievement {
       type: type,
       target: target,
       progress: progress ?? this.progress,
-      rewardCoins: rewardCoins,
+      reward: reward,
       isUnlocked: isUnlocked ?? this.isUnlocked,
+      isClaimed: isClaimed ?? this.isClaimed,
       unlockedAt: unlockedAt ?? this.unlockedAt,
+      claimedAt: claimedAt ?? this.claimedAt,
     );
   }
 }
 
 // Global Achievement Definitions
 final List<Map<String, dynamic>> achievementDefinitions = [
-  // Match Master
   {
-    'id': 'match_master',
-    'title': 'Match Master',
-    'description': 'Play 50 Matches',
+    'id': 'welcome_back',
+    'title': 'Welcome Back',
+    'description': 'Login for 2 consecutive days.',
+    'type': AchievementType.loginStreak,
+    'target': 2,
+    'reward': {'coins': 100, 'xp': 50},
+  },
+  {
+    'id': 'first_victory',
+    'title': 'First Victory',
+    'description': 'Win your first match.',
+    'type': AchievementType.matchesWon,
+    'target': 1,
+    'reward': {'coins': 150},
+  },
+  {
+    'id': 'beginner',
+    'title': 'Beginner',
+    'description': 'Play 5 matches.',
     'type': AchievementType.matchesPlayed,
+    'target': 5,
+    'reward': {'xp': 100},
+  },
+  {
+    'id': 'rising_star',
+    'title': 'Rising Star',
+    'description': 'Reach Bronze League.',
+    'type': AchievementType.rankReached,
+    'target': 1,
+    'reward': {'avatarId': 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix'}, // Felix
+  },
+  {
+    'id': 'consistent_player',
+    'title': 'Consistent Player',
+    'description': 'Login for 7 consecutive days.',
+    'type': AchievementType.loginStreak,
+    'target': 7,
+    'reward': {'coins': 300},
+  },
+  {
+    'id': 'challenger',
+    'title': 'Challenger',
+    'description': 'Win 10 matches.',
+    'type': AchievementType.matchesWon,
+    'target': 10,
+    'reward': {'avatarId': 'https://api.dicebear.com/7.x/avataaars/png?seed=Jasper'}, // Jasper
+  },
+  {
+    'id': 'scholar',
+    'title': 'Scholar',
+    'description': 'Answer 50 questions correctly.',
+    'type': AchievementType.questionsCorrect,
     'target': 50,
-    'rewardCoins': 100,
-  },
-  {
-    'id': 'century_player',
-    'title': 'Century Player',
-    'description': 'Play 100 Matches',
-    'type': AchievementType.matchesPlayed,
-    'target': 100,
-    'rewardCoins': 250,
-  },
-  {
-    'id': 'warrior',
-    'title': 'Warrior',
-    'description': 'Win 25 Matches',
-    'type': AchievementType.matchesWon,
-    'target': 25,
-    'rewardCoins': 150,
-  },
-  {
-    'id': 'champion',
-    'title': 'Champion',
-    'description': 'Win 100 Matches',
-    'type': AchievementType.matchesWon,
-    'target': 100,
-    'rewardCoins': 500,
+    'reward': {'coins': 200, 'xp': 150},
   },
   {
     'id': 'unstoppable',
     'title': 'Unstoppable',
-    'description': 'Win 250 Matches',
-    'type': AchievementType.matchesWon,
-    'target': 250,
-    'rewardCoins': 1000,
-  },
-  // Accuracy
-  {
-    'id': 'sharp_shooter',
-    'title': 'Sharp Shooter',
-    'description': 'Answer 20 Questions Correctly',
-    'type': AchievementType.questionsCorrect,
-    'target': 20,
-    'rewardCoins': 75,
+    'description': 'Achieve a 5-match win streak.',
+    'type': AchievementType.winStreak,
+    'target': 5,
+    'reward': {'coins': 500, 'xp': 250},
   },
   {
-    'id': 'genius',
-    'title': 'Genius',
-    'description': 'Answer 100 Questions Correctly',
-    'type': AchievementType.questionsCorrect,
-    'target': 100,
-    'rewardCoins': 250,
+    'id': 'godlike',
+    'title': 'Godlike',
+    'description': 'Achieve a 10-match win streak.',
+    'type': AchievementType.winStreak,
+    'target': 10,
+    'reward': {'coins': 2000, 'xp': 1000, 'borderId': 'gold_border'},
   },
   {
-    'id': 'quiz_master',
-    'title': 'Quiz Master',
-    'description': 'Answer 500 Questions Correctly',
-    'type': AchievementType.questionsCorrect,
-    'target': 500,
-    'rewardCoins': 750,
+    'id': 'veteran',
+    'title': 'Veteran',
+    'description': 'Play 50 matches.',
+    'type': AchievementType.matchesPlayed,
+    'target': 50,
+    'reward': {'coins': 1000, 'xp': 500},
   },
   {
-    'id': 'professor',
-    'title': 'Professor',
-    'description': 'Answer 1000 Questions Correctly',
-    'type': AchievementType.questionsCorrect,
-    'target': 1000,
-    'rewardCoins': 1500,
+    'id': 'perfectionist',
+    'title': 'Perfectionist',
+    'description': 'Get a perfect score in 10 matches.',
+    'type': AchievementType.perfectScores,
+    'target': 10,
+    'reward': {'avatarId': 'https://api.dicebear.com/7.x/avataaars/png?seed=Aiden'},
   },
-  // Streak
   {
-    'id': 'consistent',
-    'title': 'Consistent',
-    'description': 'Maintain a 3-day login streak',
-    'type': AchievementType.loginStreak,
+    'id': 'silver_warrior',
+    'title': 'Silver Warrior',
+    'description': 'Reach Silver League.',
+    'type': AchievementType.rankReached,
+    'target': 2,
+    'reward': {'coins': 400},
+  },
+  {
+    'id': 'gold_conqueror',
+    'title': 'Gold Conqueror',
+    'description': 'Reach Gold League.',
+    'type': AchievementType.rankReached,
     'target': 3,
-    'rewardCoins': 50,
+    'reward': {'avatarId': 'https://api.dicebear.com/7.x/avataaars/png?seed=Zoe'},
   },
   {
-    'id': 'dedicated',
-    'title': 'Dedicated',
-    'description': 'Maintain a 7-day login streak',
-    'type': AchievementType.loginStreak,
-    'target': 7,
-    'rewardCoins': 200,
+    'id': 'elite_master',
+    'title': 'Elite Master',
+    'description': 'Reach Master League.',
+    'type': AchievementType.rankReached,
+    'target': 6,
+    'reward': {'coins': 2000, 'xp': 1000},
   },
   {
-    'id': 'hardcore',
-    'title': 'Hardcore Player',
-    'description': 'Maintain a 30-day login streak',
-    'type': AchievementType.loginStreak,
-    'target': 30,
-    'rewardCoins': 1000,
+    'id': 'level_10',
+    'title': 'Powering Up',
+    'description': 'Reach Level 10.',
+    'type': AchievementType.levelReached,
+    'target': 10,
+    'reward': {'coins': 500, 'xp': 200},
+  },
+  {
+    'id': 'level_25',
+    'title': 'Expert Explorer',
+    'description': 'Reach Level 25.',
+    'type': AchievementType.levelReached,
+    'target': 25,
+    'reward': {'avatarId': 'https://api.dicebear.com/7.x/avataaars/png?seed=Oliver'},
+  },
+  {
+    'id': 'marksman',
+    'title': 'Marksman',
+    'description': 'Maintain an average accuracy of 80% or higher.',
+    'type': AchievementType.accuracy,
+    'target': 80,
+    'reward': {'coins': 600},
+  },
+  {
+    'id': 'arena_warrior',
+    'title': 'Arena Warrior',
+    'description': 'Win 5 Arena Breaker matches.',
+    'type': AchievementType.arenaBreakerWins,
+    'target': 5,
+    'reward': {'coins': 1000, 'xp': 500},
   },
 ];
