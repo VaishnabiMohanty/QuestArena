@@ -4,6 +4,8 @@ import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../providers/user_providers.dart';
 import '../../../providers/guild_providers.dart';
+import '../../../data/models/guild_model.dart';
+import '../../widgets/smart_avatar.dart';
 import 'guild_home_screen.dart';
 
 void showGuildOptionsDialog(BuildContext context, WidgetRef ref) {
@@ -96,7 +98,7 @@ void showCreateGuildDialog(BuildContext context, WidgetRef ref) {
               final user = ref.read(currentUserProvider).value;
               if (user == null) return;
               
-              final guildId = await ref.read(guildRepositoryProvider).createGuild(
+              await ref.read(guildRepositoryProvider).createGuild(
                 name: nameController.text.trim(),
                 iconId: selectedIconId,
                 leader: user,
@@ -151,7 +153,9 @@ void showJoinGuildDialog(BuildContext context, WidgetRef ref) {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const GuildHomeScreen()));
               }
             } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: AppColors.red));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: AppColors.red));
+              }
             }
           },
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonCyan),
@@ -160,6 +164,152 @@ void showJoinGuildDialog(BuildContext context, WidgetRef ref) {
       ],
     ),
   );
+}
+
+void showInviteFriendsBottomSheet(BuildContext context, WidgetRef ref, GuildModel guild) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.bgBase,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+    ),
+    builder: (context) => _InviteFriendsSheet(guild: guild),
+  );
+}
+
+class _InviteFriendsSheet extends ConsumerStatefulWidget {
+  final GuildModel guild;
+  const _InviteFriendsSheet({required this.guild});
+
+  @override
+  ConsumerState<_InviteFriendsSheet> createState() => _InviteFriendsSheetState();
+}
+
+class _InviteFriendsSheetState extends ConsumerState<_InviteFriendsSheet> {
+  final Set<String> _invitedUids = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final friendsAsync = ref.watch(friendsProvider);
+    final sentInvitesAsync = ref.watch(guildSentInvitationsProvider(widget.guild.id));
+    final user = ref.read(currentUserProvider).value;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('INVITE FRIENDS', style: AppTextStyles.display.copyWith(fontSize: 20, color: AppColors.neonCyan)),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: friendsAsync.when(
+              data: (friends) {
+                // Filter out friends who are already in THIS guild
+                final eligibleFriends = friends.where((f) => !widget.guild.memberUids.contains(f.uid)).toList();
+                
+                if (eligibleFriends.isEmpty) {
+                  return const Center(
+                    child: Text('No friends found to invite.', style: TextStyle(color: AppColors.textMuted)),
+                  );
+                }
+                
+                return ListView.builder(
+                  itemCount: eligibleFriends.length,
+                  itemBuilder: (context, index) {
+                    final friend = eligibleFriends[index];
+                    final isAlreadyInAnotherGuild = friend.guildId != null;
+                    final hasSentInvite = _invitedUids.contains(friend.uid) || 
+                        (sentInvitesAsync.value?.any((invite) => invite['receiverUid'] == friend.uid) ?? false);
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.surface),
+                      ),
+                      child: Row(
+                        children: [
+                          SmartAvatar(avatarUrl: friend.avatarUrl, size: 48),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              friend.username,
+                              style: AppTextStyles.bodyMd.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isAlreadyInAnotherGuild ? AppColors.textMuted : Colors.white,
+                              ),
+                            ),
+                          ),
+                          if (isAlreadyInAnotherGuild)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'ALREADY IN A GUILD',
+                                style: AppTextStyles.label.copyWith(fontSize: 8, color: AppColors.textMuted, fontWeight: FontWeight.w900),
+                              ),
+                            )
+                          else
+                            ElevatedButton(
+                              onPressed: hasSentInvite ? null : () async {
+                                setState(() => _invitedUids.add(friend.uid));
+                                await ref.read(guildRepositoryProvider).inviteFriend(
+                                  guildId: widget.guild.id,
+                                  guildName: widget.guild.name,
+                                  guildIconId: widget.guild.iconId,
+                                  senderUid: user!.uid,
+                                  senderName: user.username,
+                                  receiverUid: friend.uid,
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: hasSentInvite ? AppColors.surface : AppColors.neonCyan,
+                                foregroundColor: hasSentInvite ? AppColors.textMuted : Colors.black,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasSentInvite) ...[
+                                    const Icon(Icons.check_rounded, size: 14),
+                                    const SizedBox(width: 4),
+                                    const Text('INVITED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                                  ] else 
+                                    const Text('INVITE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, s) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.red))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 IconData _getIconData(String id) {

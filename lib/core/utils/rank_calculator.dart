@@ -3,7 +3,6 @@
 
 import 'dart:ui';
 import 'dart:math' as math;
-import '../constants/colors.dart';
 import 'level_system.dart';
 import 'rank_system.dart';
 

@@ -303,7 +303,7 @@ class _GuildMatchmakingScreenState extends ConsumerState<GuildMatchmakingScreen>
           alignment: Alignment.center,
           children: [
              Text(
-              '$_secondsRemaining',
+              _secondsRemaining > 0 ? '$_secondsRemaining' : 'GO!',
               style: AppTextStyles.display.copyWith(fontSize: 80, color: Colors.white),
             ).animate(key: ValueKey(_secondsRemaining)).scale(duration: 300.ms, begin: const Offset(0.5, 0.5), end: const Offset(1, 1)).fadeIn(),
           ],

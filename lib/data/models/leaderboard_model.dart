@@ -17,6 +17,7 @@ class LeaderboardModel {
   final double averageAccuracy;
   final int eloRating;
   final String? selectedBorder;
+  final String? guildId;
 
   LeaderboardModel({
     required this.uid,
@@ -33,6 +34,7 @@ class LeaderboardModel {
     this.averageAccuracy = 0.0,
     this.eloRating = 1200,
     this.selectedBorder,
+    this.guildId,
   });
 
   // Calculated values
@@ -62,6 +64,7 @@ class LeaderboardModel {
       averageAccuracy: (json['averageAccuracy'] ?? 0).toDouble(),
       eloRating: json['eloRating'] ?? 1200,
       selectedBorder: json['selectedBorder'],
+      guildId: json['guildId'],
     );
   }
 
@@ -80,5 +83,6 @@ class LeaderboardModel {
     'averageAccuracy': averageAccuracy,
     'eloRating': eloRating,
     'selectedBorder': selectedBorder,
+    'guildId': guildId,
   };
 }

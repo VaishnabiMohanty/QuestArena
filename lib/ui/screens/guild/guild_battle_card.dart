@@ -85,59 +85,57 @@ class _GuildBattleCardState extends ConsumerState<GuildBattleCard> {
 
   Widget _buildLobbyView(UserModel? user) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.neonPink.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(color: AppColors.neonPink.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 2),
-        ],
+        border: Border.all(color: AppColors.neonPink.withValues(alpha: 0.5), width: 1.5),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const FaIcon(
-                FontAwesomeIcons.shield,
-                color: AppColors.neonPink,
-                size: 32,
-              ),
+              const Icon(Icons.flash_on_rounded, color: Colors.white, size: 28),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('GUILD BATTLE', style: AppTextStyles.headline.copyWith(color: Colors.white, fontSize: 18)),
+                  Text('GUILD BATTLE', style: AppTextStyles.headline.copyWith(color: Colors.white, fontSize: 18, letterSpacing: 1)),
                   const Text('Team up and crush your rivals!', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              final user = ref.read(currentUserProvider).value;
-              if (user != null && user.uid == widget.guild.leaderUid) {
-                final category = await CategoryPickerSheet.show(context);
-                if (category != null) {
-                  await ref.read(guildRepositoryProvider).updateSelectedCategory(
-                    widget.guild.id, 
-                    category.id.toString(), 
-                    category.name,
-                  );
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                final user = ref.read(currentUserProvider).value;
+                if (user != null && user.uid == widget.guild.leaderUid) {
+                  final category = await CategoryPickerSheet.show(context);
+                  if (category != null) {
+                    await ref.read(guildRepositoryProvider).updateSelectedCategory(
+                      widget.guild.id, 
+                      category.id.toString(), 
+                      category.name,
+                    );
+                  }
                 }
-              }
-              if (mounted) {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const GuildMatchmakingScreen()));
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.neonPink,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                if (mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const GuildMatchmakingScreen()));
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.neonPink,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                elevation: 8,
+                shadowColor: AppColors.neonPink.withValues(alpha: 0.4),
+              ),
+              child: const Text('START BATTLE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 2)),
             ),
-            child: const Text('⚔ GUILD BATTLE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
           ),
         ],
       ),
@@ -255,7 +253,7 @@ class _GuildBattleCardState extends ConsumerState<GuildBattleCard> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => GuildResultScreen(match: match, myGuildId: guild.id)));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => GuildResultScreen(matchId: match.id)));
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.surface, shape: const StadiumBorder()),
                 child: const Text('VIEW RESULTS', style: TextStyle(color: Colors.white, fontSize: 10)),

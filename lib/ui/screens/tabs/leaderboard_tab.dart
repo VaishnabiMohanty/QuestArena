@@ -9,7 +9,7 @@ import '../../../providers/leaderboard_providers.dart';
 import '../../../providers/user_providers.dart';
 import '../../../core/utils/rank_system.dart';
 import '../../widgets/smart_avatar.dart';
-import '../../widgets/expandable_player_card.dart';
+import '../../widgets/player_profile_dialog.dart';
 
 class LeaderboardTab extends ConsumerStatefulWidget {
   const LeaderboardTab({super.key});
@@ -94,38 +94,104 @@ class _LeaderboardTabState extends ConsumerState<LeaderboardTab> {
   }
 
   Widget _buildFriendsLeaderboard(AsyncValue<List<LeaderboardModel>> friendsAsync, UserModel? currentUser) {
-    return friendsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-      error: (e, s) => Center(child: Text('Error: $e')),
-      data: (friends) {
-        final List<LeaderboardModel> all = List.from(friends);
-        if (currentUser != null) {
-          all.add(LeaderboardModel(
-            uid: currentUser.uid,
-            username: currentUser.username,
-            avatarUrl: currentUser.avatarUrl,
-            xp: currentUser.xp,
-            level: currentUser.level,
-            rank: currentUser.rank,
-            subRank: currentUser.subRank ?? 0,
-            eloRating: currentUser.eloRating,
-            wins: currentUser.wins,
-          ));
-        }
-        all.sort((a, b) => b.xp.compareTo(a.xp));
+    final incomingRequestsAsync = ref.watch(incomingRequestsProvider);
 
-        if (all.isEmpty) return const Center(child: Text('Add friends to compare ranks!'));
-
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          itemCount: all.length,
-          itemBuilder: (context, index) {
-            final player = all[index];
-            final isMe = player.uid == currentUser?.uid;
-            return _LeaderboardItem(player: player, rank: index + 1, isMe: isMe);
+    return Column(
+      children: [
+        incomingRequestsAsync.when(
+          data: (requests) {
+            if (requests.isEmpty) return const SizedBox.shrink();
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('FRIEND REQUESTS', style: AppTextStyles.label.copyWith(letterSpacing: 2)),
+                  const SizedBox(height: 12),
+                  ...requests.map((r) {
+                    final data = r.data() as Map<String, dynamic>;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+                      ),
+                      child: Row(
+                        children: [
+                          SmartAvatar(avatarUrl: data['senderAvatar'], size: 40),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(data['senderUsername'], style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
+                                Text('wants to be friends', style: AppTextStyles.label.copyWith(fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.check_circle_rounded, color: AppColors.teal),
+                                onPressed: () => ref.read(friendsRepositoryProvider).acceptFriendRequest(r.id, data),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.cancel_rounded, color: AppColors.red),
+                                onPressed: () => ref.read(friendsRepositoryProvider).rejectFriendRequest(r.id),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const Divider(color: AppColors.surface, height: 32),
+                ],
+              ),
+            );
           },
-        );
-      },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+        Expanded(
+          child: friendsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+            error: (e, s) => Center(child: Text('Error: $e')),
+            data: (friends) {
+              final List<LeaderboardModel> all = List.from(friends);
+              if (currentUser != null) {
+                all.add(LeaderboardModel(
+                  uid: currentUser.uid,
+                  username: currentUser.username,
+                  avatarUrl: currentUser.avatarUrl,
+                  xp: currentUser.xp,
+                  level: currentUser.level,
+                  rank: currentUser.rank,
+                  subRank: currentUser.subRank ?? 0,
+                  eloRating: currentUser.eloRating,
+                  wins: currentUser.wins,
+                ));
+              }
+              all.sort((a, b) => b.xp.compareTo(a.xp));
+
+              if (all.isEmpty) return const Center(child: Text('Add friends to compare ranks!'));
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: all.length,
+                itemBuilder: (context, index) {
+                  final player = all[index];
+                  final isMe = player.uid == currentUser?.uid;
+                  return _LeaderboardItem(player: player, rank: index + 1, isMe: isMe);
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -174,31 +240,7 @@ class _LeaderboardItem extends StatelessWidget {
     final rankColor = rank == 1 ? AppColors.gold : (rank == 2 ? Colors.white70 : (rank == 3 ? Colors.brown : AppColors.textMuted));
 
     return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (context) => Dialog(
-            backgroundColor: AppColors.cardBg,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SmartAvatar(avatarUrl: player.avatarUrl, size: 80, showGlow: true),
-                  const SizedBox(height: 16),
-                  Text(player.username, style: AppTextStyles.headline),
-                  Text(RankSystem.getRankName(player.rank, player.subRank), style: AppTextStyles.label.copyWith(color: AppColors.gold)),
-                  const SizedBox(height: 24),
-                  ExpandedDetails(uid: player.uid, player: player, isMe: isMe),
-                  const SizedBox(height: 24),
-                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('CLOSE')),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      onTap: () => PlayerProfileDialog.show(context, uid: player.uid, player: player, isMe: isMe),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
