@@ -150,7 +150,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> with TickerProvider
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _MiniStat(label: 'LEVEL', value: '${user.level}'),
-              _MiniStat(label: 'RANK XP', value: '${user.rankPoints}'),
+              _MiniStat(label: 'RANK XP', value: '${user.xp}'),
               _MiniStat(label: 'MATCHES', value: '${user.matchesPlayed}'),
             ],
           ),

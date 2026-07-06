@@ -467,6 +467,9 @@ class GuildRepository {
     transaction.update(userRef, {
       'weeklyXp': FieldValue.increment(score),
       'weeklyWins': FieldValue.increment(isWin ? 1 : 0),
+      'guildBattlesPlayed': FieldValue.increment(1),
+      'guildBattlesWon': FieldValue.increment(isWin ? 1 : 0),
+      'totalGuildXpContributed': FieldValue.increment(score),
       'coins': FieldValue.increment(isWin ? 100 : 20),
     });
   }
@@ -497,6 +500,65 @@ class GuildRepository {
       'selectedCategoryId': categoryId,
       'selectedCategoryName': categoryName,
     });
+  }
+
+  // GUILD INVITATIONS
+
+  Future<void> inviteFriend({
+    required String guildId,
+    required String guildName,
+    required String guildIconId,
+    required String senderUid,
+    required String senderName,
+    required String receiverUid,
+  }) async {
+    final invitationRef = _db.collection('guildInvitations').doc();
+    final invitation = {
+      'id': invitationRef.id,
+      'guildId': guildId,
+      'guildName': guildName,
+      'guildIconId': guildIconId,
+      'senderUid': senderUid,
+      'senderName': senderName,
+      'receiverUid': receiverUid,
+      'sentAt': FieldValue.serverTimestamp(),
+    };
+    await invitationRef.set(invitation);
+  }
+
+  Stream<List<Map<String, dynamic>>> watchInvitations(String uid) {
+    return _db.collection('guildInvitations')
+        .where('receiverUid', isEqualTo: uid)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+  Stream<List<Map<String, dynamic>>> watchGuildSentInvitations(String guildId) {
+    return _db.collection('guildInvitations')
+        .where('guildId', isEqualTo: guildId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+  Future<void> acceptInvitation(String invitationId, String uid) async {
+    final doc = await _db.collection('guildInvitations').doc(invitationId).get();
+    if (!doc.exists) return;
+    
+    final guildId = doc.data()!['guildId'];
+    final userDoc = await _db.collection('users').doc(uid).get();
+    if (!userDoc.exists) return;
+
+    await _db.runTransaction((transaction) async {
+      transaction.update(_db.collection('guilds').doc(guildId), {
+        'memberUids': FieldValue.arrayUnion([uid])
+      });
+      transaction.update(_db.collection('users').doc(uid), {'guildId': guildId});
+      transaction.delete(_db.collection('guildInvitations').doc(invitationId));
+    });
+  }
+
+  Future<void> declineInvitation(String invitationId) async {
+    await _db.collection('guildInvitations').doc(invitationId).delete();
   }
 
   String _generateGuildCode() {

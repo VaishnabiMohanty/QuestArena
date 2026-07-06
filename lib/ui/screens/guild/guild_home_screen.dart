@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_utils.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/utils/rank_system.dart';
 import '../../../data/models/guild_model.dart';
 import '../../../providers/guild_providers.dart';
 import '../../../providers/user_providers.dart';
 import '../../widgets/smart_avatar.dart';
-import '../../widgets/expandable_player_card.dart';
+import '../../widgets/player_profile_dialog.dart';
 import '../../widgets/neon_swirl_background.dart';
 import 'guild_battle_card.dart';
+import 'guild_dialogs.dart';
 
 class GuildHomeScreen extends ConsumerStatefulWidget {
   const GuildHomeScreen({super.key});
@@ -45,7 +49,11 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: Text('GUILD HOME', style: AppTextStyles.display.copyWith(fontSize: 18)),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.neonCyan),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text('GUILD HOME', style: AppTextStyles.display.copyWith(fontSize: 18, letterSpacing: 2)),
             centerTitle: true,
             actions: [
               IconButton(
@@ -59,32 +67,53 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
             child: CustomScrollView(
               slivers: [
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: GuildBattleCard(guild: guild),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                
+                // 1. GUILD INFORMATION HEADER
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: _GuildHeader(guild: guild),
                   ),
                 ),
+                
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // 2. WEEKLY GUILD MVP
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: _GuildMvpSection(memberUids: guild.memberUids),
                   ),
                 ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // 3. GUILD BATTLE CARD
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: GuildBattleCard(guild: guild),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // 4. INVITE SECTION
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _InviteSection(guild: guild),
+                  ),
+                ),
+
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                // 5. MEMBERS SECTION
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
                     child: Text(
-                      'MEMBERS (${guild.memberUids.length})', 
+                      'MEMBERS (${guild.memberUids.length}/20)', 
                       style: AppTextStyles.label.copyWith(letterSpacing: 2, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -93,6 +122,7 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   sliver: _buildMembersList(ref, guild),
                 ),
+                
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
@@ -116,19 +146,53 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
               final isMe = member.uid == ref.read(currentUserProvider).value?.uid;
               final isLeader = member.uid == guild.leaderUid;
 
-              return ExpandablePlayerCard(
-                uid: member.uid,
-                username: member.username,
-                avatarUrl: member.avatarUrl,
-                level: member.level,
-                xp: member.xp,
-                rank: member.rank,
-                subRank: member.subRank,
-                isMe: isMe,
-                isExpanded: _selectedUid == member.uid,
-                index: index,
-                onTap: () => _toggleProfile(member.uid),
-                trailing: isLeader ? const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 20) : null,
+              return GestureDetector(
+                onTap: () => PlayerProfileDialog.show(context, uid: member.uid, isMe: isMe),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.surface),
+                  ),
+                  child: Row(
+                    children: [
+                      SmartAvatar(avatarUrl: member.avatarUrl, size: 44),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(member.username, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold)),
+                                if (isLeader) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 14),
+                                ],
+                              ],
+                            ),
+                            Text(isLeader ? 'Leader' : 'Member', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.gold)),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('LVL ${member.level}', style: AppTextStyles.label.copyWith(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                          Row(
+                            children: [
+                              const Icon(Icons.shield_rounded, size: 10, color: AppColors.textMuted),
+                              const SizedBox(width: 4),
+                              Text(RankSystem.getRankName(member.rank, member.subRank), style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
             childCount: members.length,
@@ -139,29 +203,63 @@ class _GuildHomeScreenState extends ConsumerState<GuildHomeScreen> {
   }
 
   Future<void> _confirmLeaveGuild(BuildContext context, WidgetRef ref, GuildModel guild) async {
+    final user = ref.read(currentUserProvider).value;
+    if (user == null) return;
+
+    final isLeader = guild.leaderUid == user.uid;
+    final hasOtherMembers = guild.memberUids.length > 1;
+
+    if (isLeader && hasOtherMembers) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.bgCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text('CANNOT LEAVE GUILD', style: AppTextStyles.headline.copyWith(color: AppColors.red, fontSize: 18)),
+          content: const Text(
+            'As the leader, you cannot leave the guild while there are other members. Please transfer leadership to another member or delete the guild first.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('UNDERSTOOD', style: TextStyle(color: AppColors.neonCyan)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgCard,
-        title: const Text('LEAVE GUILD?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text('Are you sure you want to leave this guild?', style: TextStyle(color: AppColors.textSecondary)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(isLeader ? 'DELETE GUILD?' : 'LEAVE GUILD?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          isLeader 
+            ? 'Are you sure you want to delete this guild? This action is permanent.' 
+            : 'Are you sure you want to leave this guild?', 
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL', style: TextStyle(color: AppColors.textMuted))),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
-            child: const Text('LEAVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(isLeader ? 'DELETE' : 'LEAVE', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      final uid = ref.read(currentUserProvider).value?.uid;
-      if (uid != null) {
-        await ref.read(guildRepositoryProvider).leaveGuild(guild.id, uid);
-        if (context.mounted) Navigator.pop(context);
-      }
+      await ref.read(guildRepositoryProvider).leaveGuild(guild.id, user.uid);
+      if (context.mounted) Navigator.pop(context);
     }
   }
 }
@@ -172,8 +270,6 @@ class _GuildHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider).value;
-    final isLeader = user?.uid == guild.leaderUid;
     final membersAsync = ref.watch(guildMembersProvider(guild.memberUids));
 
     return Container(
@@ -181,114 +277,51 @@ class _GuildHeader extends ConsumerWidget {
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.surface),
+        border: Border.all(color: AppColors.surface, width: 1.5),
       ),
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                onTap: isLeader ? () => _showChangeIconDialog(context, ref, guild) : null,
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      width: 70, height: 70,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.neonPink.withValues(alpha: 0.1),
-                        border: Border.all(color: AppColors.neonPink.withValues(alpha: 0.5), width: 2),
-                      ),
-                      child: Icon(_getIconData(guild.iconId), color: AppColors.neonPink, size: 36),
-                    ),
-                    if (isLeader)
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: AppColors.neonPink, shape: BoxShape.circle),
-                        child: const Icon(Icons.edit_rounded, size: 12, color: Colors.white),
-                      ),
-                  ],
-                ),
+              // GUILD ICON
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(Icons.shield, color: AppColors.neonPink.withValues(alpha: 0.1), size: 80),
+                  Icon(Icons.shield_outlined, color: AppColors.neonPink.withValues(alpha: 0.5), size: 80),
+                  Icon(_getIconData(guild.iconId), color: AppColors.neonPink, size: 36),
+                ],
               ),
               const SizedBox(width: 16),
+              // GUILD DETAILS
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(guild.name, style: AppTextStyles.headline.copyWith(fontSize: 22)),
-                    const SizedBox(height: 2),
+                    Text(guild.name, style: AppTextStyles.headline.copyWith(fontSize: 24, letterSpacing: 1)),
+                    const SizedBox(height: 4),
+                    Text('LEVEL ${guild.level}', style: AppTextStyles.label.copyWith(color: AppColors.neonCyan, fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 4),
                     membersAsync.when(
                       data: (members) {
                         final leader = members.firstWhere((m) => m.uid == guild.leaderUid, orElse: () => members.first);
                         return Text(
-                          'LEADER: ${leader.username}',
-                          style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.bold),
+                          'Leader: ${leader.username}',
+                          style: AppTextStyles.label.copyWith(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.bold),
                         );
                       },
                       loading: () => const SizedBox.shrink(),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
-                    const SizedBox(height: 4),
-                    if (isLeader)
-                      Row(
-                        children: [
-                          Text('CODE: ', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textMuted)),
-                          Text(guild.code, style: AppTextStyles.label.copyWith(color: AppColors.gold, letterSpacing: 1.5, fontSize: 10, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 4),
-                          GestureDetector(
-                            onTap: () {
-                              Clipboard.setData(ClipboardData(text: guild.code));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Guild code copied to clipboard!'), duration: Duration(seconds: 2)),
-                              );
-                            },
-                            child: const Icon(Icons.copy_rounded, size: 12, color: AppColors.gold),
-                          ),
-                        ],
-                      ),
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('LVL ${guild.level}', style: AppTextStyles.headline.copyWith(fontSize: 18, color: AppColors.neonCyan)),
-                  Text('${guild.memberUids.length} MEMBERS', style: AppTextStyles.label.copyWith(fontSize: 8, color: AppColors.textSecondary)),
-                ],
-              ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _GuildXpProgress(xp: guild.xp, level: guild.level),
         ],
-      ),
-    );
-  }
-
-  void _showChangeIconDialog(BuildContext context, WidgetRef ref, GuildModel guild) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.bgCard,
-        title: Text('CHANGE ICON', style: AppTextStyles.headline.copyWith(fontSize: 18, color: AppColors.neonPink)),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: List.generate(6, (i) {
-            final id = (i + 1).toString();
-            return GestureDetector(
-              onTap: () {
-                ref.read(guildRepositoryProvider).updateGuildIcon(guild.id, id);
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 50, height: 50,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.surface),
-                child: Icon(_getIconData(id), color: AppColors.textMuted, size: 24),
-              ),
-            );
-          }),
-        ),
       ),
     );
   }
@@ -306,6 +339,101 @@ class _GuildHeader extends ConsumerWidget {
   }
 }
 
+class _InviteSection extends ConsumerWidget {
+  final GuildModel guild;
+  const _InviteSection({required this.guild});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.surface),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_circle_outlined, color: AppColors.neonCyan, size: 20),
+              const SizedBox(width: 8),
+              Text('INVITE TO GUILD', style: AppTextStyles.label.copyWith(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Invite your friends and grow your guild together!',
+            style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _InviteActionButton(
+                  icon: Icons.person_add_alt_1_rounded,
+                  label: 'INVITE FRIENDS',
+                  color: AppColors.neonCyan,
+                  onTap: () => showInviteFriendsBottomSheet(context, ref, guild),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InviteActionButton(
+                  icon: Icons.share_rounded,
+                  label: 'SHARE CODE',
+                  color: AppColors.purple,
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: guild.code));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied!')));
+                    SharePlus.instance.share(
+                      ShareParams(text: ShareUtils.buildGuildShareMessage(guild.name, guild.code)),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InviteActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _InviteActionButton({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 8),
+            Text(label, style: AppTextStyles.label.copyWith(color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _GuildXpProgress extends StatelessWidget {
   final int xp;
   final int level;
@@ -313,7 +441,7 @@ class _GuildXpProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int xpInCurrentLevel = xp % 1000; // Placeholder logic
+    final int xpInCurrentLevel = xp % 1000;
     final double progress = xpInCurrentLevel / 1000;
 
     return Column(
@@ -321,11 +449,11 @@ class _GuildXpProgress extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('GUILD XP', style: AppTextStyles.label.copyWith(fontSize: 9)),
-            Text('$xpInCurrentLevel / 1000', style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.textMuted)),
+            Text('GUILD XP', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+            Text('$xpInCurrentLevel / 1000', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: LinearProgressIndicator(
@@ -368,7 +496,7 @@ class _GuildMvpSection extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 20),
+                  const Icon(Icons.emoji_events_rounded, color: AppColors.gold, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'WEEKLY GUILD MVP', 
