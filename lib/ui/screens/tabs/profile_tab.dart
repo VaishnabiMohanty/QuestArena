@@ -3,19 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/utils/rank_system.dart';
 import '../../../providers/user_providers.dart';
 import '../../../providers/auth_providers.dart';
-import '../../../providers/achievement_providers.dart';
-import '../../../providers/avatar_providers.dart';
-import '../../../providers/border_providers.dart';
-import '../../../data/models/achievement_model.dart';
+import '../../../providers/guild_providers.dart';
 import '../../../data/models/user_model.dart';
-import '../../../core/errors/result.dart';
+import '../../../data/models/guild_model.dart';
 import '../../widgets/neon_swirl_background.dart';
 import '../../widgets/smart_avatar.dart';
+import '../../widgets/player_profile_dialog.dart';
 import 'edit_profile_screen.dart';
-import '../avatar_collection_screen.dart';
-import '../border_collection_screen.dart';
+import '../guild/guild_home_screen.dart';
+import '../guild/guild_dialogs.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -151,7 +150,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
                   const SizedBox(height: 32),
                   _buildAnalyticsGrid(user),
                   const SizedBox(height: 32),
-                  _buildAchievementsSection(user.uid),
+                  _ProfileGuildSection(user: user),
                   const SizedBox(height: 32),
                   const _FriendRequestsSection(),
                   const _FriendsListSection(),
@@ -361,8 +360,302 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
   }
 }
 
-class _CustomizationCard extends StatelessWidget {
-  final String title;
+class _ProfileGuildSection extends ConsumerWidget {
+  final UserModel user;
+  const _ProfileGuildSection({required this.user});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Case 1: User is already in a guild
+    if (user.guildId != null) {
+      final guildAsync = ref.watch(userGuildProvider);
+      return guildAsync.when(
+        data: (guild) {
+          if (guild == null) return const _NoGuildCard();
+          return _GuildInformationCard(guild: guild);
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => const _NoGuildCard(),
+      );
+    }
+
+    // Case 2 & 3: Not in a guild, check for invitations
+    final invitesAsync = ref.watch(guildInvitationsProvider);
+    return invitesAsync.when(
+      data: (invites) {
+        if (invites.isNotEmpty) {
+          return _GuildInvitationsCarousel(invites: invites);
+        }
+        return const _NoGuildCard();
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => const _NoGuildCard(),
+    );
+  }
+}
+
+class _GuildInformationCard extends ConsumerWidget {
+  final GuildModel guild;
+  const _GuildInformationCard({required this.guild});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GuildHomeScreen())),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: AppColors.neonPink.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: AppColors.neonPink.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 2),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonPink.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.neonPink.withValues(alpha: 0.3)),
+                  ),
+                  child: Icon(_getGuildIcon(guild.iconId), color: AppColors.neonPink, size: 32),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(guild.name.toUpperCase(), style: AppTextStyles.headline.copyWith(fontSize: 20, letterSpacing: 1)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, color: AppColors.gold, size: 14),
+                          const SizedBox(width: 4),
+                          Text('LEVEL ${guild.level}', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const _GuildLeaderInfo(),
+            const SizedBox(height: 20),
+            _GuildXpProgressBar(xp: guild.xp),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getGuildIcon(String id) {
+    switch (id) {
+      case '1': return Icons.auto_awesome_rounded;
+      case '2': return Icons.military_tech_rounded;
+      case '3': return Icons.shield_rounded;
+      case '4': return Icons.bolt_rounded;
+      case '5': return Icons.workspace_premium_rounded;
+      case '6': return Icons.pets_rounded;
+      default: return Icons.groups_rounded;
+    }
+  }
+}
+
+class _NoGuildCard extends StatelessWidget {
+  const _NoGuildCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: AppColors.surface, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.castle_rounded, color: AppColors.textMuted, size: 48),
+          const SizedBox(height: 16),
+          Text('NOT CURRENTLY IN A GUILD', style: AppTextStyles.label.copyWith(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          const SizedBox(height: 12),
+          Text(
+            'Join a guild to participate in exclusive battles and climb the ranks with your team.',
+            style: AppTextStyles.label.copyWith(fontSize: 11, color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Consumer(
+                  builder: (context, ref, _) => OutlinedButton(
+                    onPressed: () => showJoinGuildDialog(context, ref),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.neonCyan),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('JOIN', style: TextStyle(color: AppColors.neonCyan, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Consumer(
+                  builder: (context, ref, _) => ElevatedButton(
+                    onPressed: () => showCreateGuildDialog(context, ref),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.neonPink,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('CREATE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuildInvitationsCarousel extends StatefulWidget {
+  final List<Map<String, dynamic>> invites;
+  const _GuildInvitationsCarousel({required this.invites});
+
+  @override
+  State<_GuildInvitationsCarousel> createState() => _GuildInvitationsCarouselState();
+}
+
+class _GuildInvitationsCarouselState extends State<_GuildInvitationsCarousel> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('PENDING INVITATIONS', style: AppTextStyles.label.copyWith(letterSpacing: 2, fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.neonCyan)),
+            if (widget.invites.length > 1)
+              Text('${_currentPage + 1}/${widget.invites.length}', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textMuted)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemCount: widget.invites.length,
+            itemBuilder: (context, index) => _InvitationCard(invite: widget.invites[index]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InvitationCard extends ConsumerWidget {
+  final Map<String, dynamic> invite;
+  const _InvitationCard({required this.invite});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider).value;
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.neonCyan.withValues(alpha: 0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: AppColors.neonCyan.withValues(alpha: 0.1), blurRadius: 15, spreadRadius: 1),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: AppColors.neonCyan.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: Icon(_getGuildIcon(invite['guildIconId']), color: AppColors.neonCyan, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(invite['guildName'].toUpperCase(), style: AppTextStyles.headline.copyWith(fontSize: 18, letterSpacing: 1)),
+                    Text('Invited by @${invite['senderName']}', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => ref.read(guildRepositoryProvider).declineInvitation(invite['id']),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.red),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('DECLINE', style: TextStyle(color: AppColors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => ref.read(guildRepositoryProvider).acceptInvitation(invite['id'], user!.uid),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.neonCyan,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('JOIN GUILD', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getGuildIcon(String id) {
+    switch (id) {
+      case '1': return Icons.auto_awesome_rounded;
+      case '2': return Icons.military_tech_rounded;
+      case '3': return Icons.shield_rounded;
+      case '4': return Icons.bolt_rounded;
+      case '5': return Icons.workspace_premium_rounded;
+      case '6': return Icons.pets_rounded;
+      default: return Icons.groups_rounded;
+    }
+  }
+}
+
+class _StatItem extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
@@ -688,19 +981,18 @@ class _FriendsListSection extends ConsumerWidget {
                 itemCount: friends.length,
                 itemBuilder: (context, index) {
                   final friend = friends[index];
-                  return Container(
-                    width: 80,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      children: [
-                        SmartAvatar(
-                          avatarUrl: friend.avatarUrl,
-                          size: 50,
-                          borderId: friend.selectedBorder,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(friend.username, style: AppTextStyles.bodyMd.copyWith(fontSize: 10, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
+                  return GestureDetector(
+                    onTap: () => PlayerProfileDialog.show(context, uid: friend.uid, player: friend, isMe: false),
+                    child: Container(
+                      width: 80,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: Column(
+                        children: [
+                          SmartAvatar(avatarUrl: friend.avatarUrl, size: 50),
+                          const SizedBox(height: 8),
+                          Text(friend.username, style: AppTextStyles.bodyMd.copyWith(fontSize: 10, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -713,39 +1005,66 @@ class _FriendsListSection extends ConsumerWidget {
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  const _StatItem({required this.icon, required this.label, required this.value, required this.color});
+class _GuildLeaderInfo extends ConsumerWidget {
+  const _GuildLeaderInfo();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final guildAsync = ref.watch(userGuildProvider);
+    return guildAsync.when(
+      data: (guild) {
+        if (guild == null) return const SizedBox.shrink();
+        final leaderAsync = ref.watch(userProfileProvider(guild.leaderUid));
+        return leaderAsync.when(
+          data: (leader) {
+            if (leader == null) return const SizedBox.shrink();
+            return Row(
+              children: [
+                Text('LEADER: ', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.textSecondary)),
+                Text('@${leader.username}', style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.bold)),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _GuildXpProgressBar extends StatelessWidget {
+  final int xp;
+  const _GuildXpProgressBar({required this.xp});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 14),
-              const SizedBox(width: 6),
-              Text(label, style: AppTextStyles.label.copyWith(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
-            ],
+    final int xpInLevel = xp % 1000;
+    final double progress = xpInLevel / 1000;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('GUILD XP', style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+            Text('$xpInLevel / 1000', style: AppTextStyles.label.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: AppColors.surface,
+            valueColor: const AlwaysStoppedAnimation(AppColors.neonPink),
           ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(value, style: AppTextStyles.headline.copyWith(fontSize: 18, color: Colors.white)),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

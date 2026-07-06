@@ -47,6 +47,9 @@ class UserModel {
   final String? guildId;
   final int weeklyXp;
   final int weeklyWins;
+  final int guildBattlesPlayed;
+  final int guildBattlesWon;
+  final int totalGuildXpContributed;
   final DateTime? lastDailyBonusDate;
   final int totalQuestionsCorrect;
   final int totalPerfectScores;
@@ -94,6 +97,9 @@ class UserModel {
     this.guildId,
     this.weeklyXp = 0,
     this.weeklyWins = 0,
+    this.guildBattlesPlayed = 0,
+    this.guildBattlesWon = 0,
+    this.totalGuildXpContributed = 0,
     this.lastDailyBonusDate,
     this.totalQuestionsCorrect = 0,
     this.totalPerfectScores = 0,
@@ -168,6 +174,9 @@ class UserModel {
       guildId: json['guildId'],
       weeklyXp: json['weeklyXp'] ?? 0,
       weeklyWins: json['weeklyWins'] ?? 0,
+      guildBattlesPlayed: json['guildBattlesPlayed'] ?? 0,
+      guildBattlesWon: json['guildBattlesWon'] ?? 0,
+      totalGuildXpContributed: json['totalGuildXpContributed'] ?? 0,
       lastDailyBonusDate: parseDate(json['lastDailyBonusDate']),
       totalQuestionsCorrect: json['totalQuestionsCorrect'] ?? 0,
       totalPerfectScores: json['totalPerfectScores'] ?? 0,
@@ -217,6 +226,9 @@ class UserModel {
         'guildId': guildId,
         'weeklyXp': weeklyXp,
         'weeklyWins': weeklyWins,
+        'guildBattlesPlayed': guildBattlesPlayed,
+        'guildBattlesWon': guildBattlesWon,
+        'totalGuildXpContributed': totalGuildXpContributed,
         'lastDailyBonusDate': lastDailyBonusDate != null ? Timestamp.fromDate(lastDailyBonusDate!) : null,
         'matchesPlayed': matchesPlayed,
         'totalQuestionsCorrect': totalQuestionsCorrect,
@@ -267,8 +279,9 @@ class UserModel {
     bool clearGuildId = false,
     int? weeklyXp,
     int? weeklyWins,
-    int? totalQuestionsCorrect,
-    int? totalPerfectScores,
+    int? guildBattlesPlayed,
+    int? guildBattlesWon,
+    int? totalGuildXpContributed,
   }) {
     return UserModel(
       uid: uid,
@@ -314,8 +327,9 @@ class UserModel {
       guildId: clearGuildId ? null : (guildId ?? this.guildId),
       weeklyXp: weeklyXp ?? this.weeklyXp,
       weeklyWins: weeklyWins ?? this.weeklyWins,
-      totalQuestionsCorrect: totalQuestionsCorrect ?? this.totalQuestionsCorrect,
-      totalPerfectScores: totalPerfectScores ?? this.totalPerfectScores,
+      guildBattlesPlayed: guildBattlesPlayed ?? this.guildBattlesPlayed,
+      guildBattlesWon: guildBattlesWon ?? this.guildBattlesWon,
+      totalGuildXpContributed: totalGuildXpContributed ?? this.totalGuildXpContributed,
     );
   }
 }

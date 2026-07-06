@@ -50,3 +50,13 @@ final guildMvpProvider = FutureProvider.family<UserModel?, List<String>>((ref, u
   members.sort((a, b) => b.weeklyXp.compareTo(a.weeklyXp));
   return members.first;
 });
+
+final guildInvitationsProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  final user = ref.watch(currentUserProvider).value;
+  if (user == null) return Stream.value([]);
+  return ref.watch(guildRepositoryProvider).watchInvitations(user.uid);
+});
+
+final guildSentInvitationsProvider = StreamProvider.family.autoDispose<List<Map<String, dynamic>>, String>((ref, guildId) {
+  return ref.watch(guildRepositoryProvider).watchGuildSentInvitations(guildId);
+});

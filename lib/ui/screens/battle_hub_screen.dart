@@ -5,13 +5,12 @@ import '../../core/constants/colors.dart';
 import '../../providers/user_providers.dart';
 import '../../providers/shop_provider.dart';
 
-import 'package:questarena/providers/guild_providers.dart';
 import 'guild/guild_home_screen.dart';
 import 'guild/guild_dialogs.dart';
 
 // ─── Battle Hub Screen ────────────────────────────────────────────────────────
 // Redesigned version of the battle_screen / battle hub
-// Three mode cards: Ranked Match, Private Duel, Practice
+// Four mode cards: Ranked Match, Private Duel, Practice, Guilds
 // Each card has a neon icon, animated on-press scale, staggered entrance
 
 class BattleHubScreen extends ConsumerStatefulWidget {
@@ -74,10 +73,14 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
     super.initState();
     _titleAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
+    
+    // ROOT CAUSE FIX: Use _modes.length dynamically
     _cardAnims = List.generate(_modes.length, (_) => AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500)));
+        
     _cardFades = _cardAnims.map((c) =>
         CurvedAnimation(parent: c, curve: Curves.easeOut)).toList();
+        
     _cardSlides = _cardAnims.map((c) =>
         Tween<Offset>(begin: const Offset(0, 0.25), end: Offset.zero)
             .animate(CurvedAnimation(parent: c, curve: Curves.easeOutCubic))).toList();
@@ -228,10 +231,12 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
               const SizedBox(height: 32),
 
               // ── Mode cards ───────────────────────────────────────────────
+              // ROOT CAUSE FIX: Replaced Column with ListView to allow scrolling and prevent clipping
               Expanded(
-                child: ListView(
+                child: ListView.builder(
                   padding: EdgeInsets.zero,
-                  children: List.generate(_modes.length, (i) {
+                  itemCount: _modes.length,
+                  itemBuilder: (context, i) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 14),
                       child: FadeTransition(
@@ -245,7 +250,7 @@ class _BattleHubScreenState extends ConsumerState<BattleHubScreen>
                         ),
                       ),
                     );
-                  }),
+                  },
                 ),
               ),
             ],
